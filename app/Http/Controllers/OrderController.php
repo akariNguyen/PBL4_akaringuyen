@@ -105,6 +105,27 @@ class OrderController extends Controller
             'new_status' => $validated['status']
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Đã chuyển trạng thái sang Đã giao']);
+        return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái thành công']);
+    }
+
+    public function cancelByCustomer(Request $request, $id)
+    {
+        \Log::info('Customer requests cancel order', [
+            'order_id' => $id,
+            'user_id' => Auth::id(),
+        ]);
+
+        $order = Order::with('items')->where('id', $id)->where('user_id', Auth::id())->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Đơn hàng không hợp lệ'], 404);
+        }
+        if ($order->status !== 'pending') {
+            return response()->json(['success' => false, 'message' => 'Chỉ có thể hủy đơn ở trạng thái Chờ xử lý'], 422);
+        }
+
+        $order->status = 'cancelled';
+        $order->save();
+
+        return response()->json(['success' => true, 'message' => 'Đã hủy đơn hàng']);
     }
 }

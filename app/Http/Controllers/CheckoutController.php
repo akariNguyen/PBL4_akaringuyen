@@ -29,8 +29,10 @@ class CheckoutController extends Controller
         $shippingFee = 38000;
         $discount = 10000;
         $finalTotal = $totalPrice + $shippingFee - $discount;
+        $addresses = auth()->check() ? auth()->user()->addresses()->latest()->get() : collect();
+        $defaultAddress = auth()->check() ? auth()->user()->defaultAddress()->first() : null;
 
-        return view('checkout', compact('product', 'cart', 'totalPrice', 'shippingFee', 'discount', 'finalTotal'));
+        return view('checkout', compact('product', 'cart', 'totalPrice', 'shippingFee', 'discount', 'finalTotal', 'addresses', 'defaultAddress'));
     }
 
     /**
@@ -42,11 +44,24 @@ class CheckoutController extends Controller
     public function store(Request $request)
     {
         // Validate the request data
-        $validated = $request->validate([
-            'address' => 'required|string|max:255',
+        $request->validate([
             'payment_method' => 'required|in:shopeepay,vcb,google_pay,napas,credit_card',
             'quantity' => 'required|integer|min:1',
+            'address' => 'nullable|string|max:255',
+            'address_id' => 'nullable|integer'
         ]);
+
+        // Resolve shipping address: prefer address_id, fallback to address text
+        $shippingAddress = $request->input('address');
+        if ($request->filled('address_id')) {
+            $addr = \App\Models\Address::where('user_id', auth()->id())->find($request->input('address_id'));
+            if ($addr) {
+                $shippingAddress = trim($addr->address_line.' '.($addr->ward ?? '').' '.($addr->district ?? '').' '.($addr->city ?? ''));
+            }
+        }
+        if (!$shippingAddress) {
+            return redirect()->back()->withErrors(['address' => 'Vui lòng chọn hoặc nhập địa chỉ giao hàng!']);
+        }
 
         // Get the product from the cart
         $cart = Session::get('cart', ['product_id' => $request->input('product_id'), 'quantity' => $request->input('quantity')]);
@@ -68,7 +83,7 @@ class CheckoutController extends Controller
         $order = new Order();
         $order->user_id = auth()->id(); // Assuming authenticated user
         $order->total_price = $finalTotal;
-        $order->address = $validated['address'];
+        $order->address = $shippingAddress;
         $order->status = 'pending';
         $order->save();
 

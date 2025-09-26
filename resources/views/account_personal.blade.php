@@ -70,6 +70,7 @@
         <div class="tabs">
             <button class="tab active" data-tab="info" id="tab-info-btn">Thông tin cá nhân</button>
             <button class="tab" data-tab="password" id="tab-password-btn">Đổi mật khẩu</button>
+            <button class="tab" data-tab="addresses" id="tab-addresses-btn">Sổ địa chỉ</button>
         </div>
 
         <div id="tab-info" class="section">
@@ -166,6 +167,44 @@
                 </div>
             @endif
         </div>
+
+        <div id="tab-addresses" class="section" style="display:none;">
+            <div class="row" style="justify-content:space-between; margin-bottom:8px;">
+                <h3 style="margin:0;">Sổ địa chỉ</h3>
+                <button class="btn primary" id="btnAddAddress">Thêm địa chỉ</button>
+            </div>
+            <div id="addressList" class="section"></div>
+
+            <template id="tplAddressItem">
+                <div class="row" style="align-items:flex-start; border:1px solid #e5e7eb; border-radius:8px; padding:12px; margin-bottom:8px;">
+                    <div class="inline">
+                        <div style="font-weight:600" data-field="full_name"></div>
+                        <div class="muted" data-field="phone"></div>
+                        <div data-field="address_line"></div>
+                        <div class="muted"><span data-field="ward"></span> <span data-field="district"></span> <span data-field="city"></span></div>
+                        <div class="muted" data-field="default"></div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn" data-action="set-default">Đặt mặc định</button>
+                        <button class="btn" data-action="delete">Xóa</button>
+                    </div>
+                </div>
+            </template>
+
+            <dialog id="dlgAddress" style="border:none; border-radius:12px; padding:16px;">
+                <h3 style="margin-top:0;">Thêm địa chỉ</h3>
+                <form id="formAddress">
+                    <div class="row"><div class="label">Họ tên</div><input type="text" name="full_name" required></div>
+                    <div class="row"><div class="label">SĐT</div><input type="text" name="phone" required></div>
+                    <div class="row"><div class="label">Địa chỉ</div><input type="text" name="address_line" required style="width:320px;"></div>
+                    <div class="row"><div class="label">Phường/Xã</div><input type="text" name="ward"></div>
+                    <div class="row"><div class="label">Quận/Huyện</div><input type="text" name="district"></div>
+                    <div class="row"><div class="label">Tỉnh/TP</div><input type="text" name="city"></div>
+                    <div class="row"><label><input type="checkbox" name="is_default"> Đặt làm mặc định</label></div>
+                    <div class="actions"><button type="submit" class="btn primary">Lưu</button> <button type="button" id="btnCloseDlg" class="btn">Đóng</button></div>
+                </form>
+            </dialog>
+        </div>
     </div>
 
     <script>
@@ -173,6 +212,7 @@
             var tabButtons = document.querySelectorAll('.tab');
             var tabInfo = document.getElementById('tab-info');
             var tabPassword = document.getElementById('tab-password');
+            var tabAddresses = document.getElementById('tab-addresses');
 
             // Hàm kích hoạt tab và cuộn đến
             function activateTab(tabId) {
@@ -185,11 +225,19 @@
                 if (tabId === 'info') {
                     tabInfo.style.display = 'block';
                     tabPassword.style.display = 'none';
+                    tabAddresses.style.display = 'none';
                     tabInfo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
+                } else if (tabId === 'password') {
                     tabPassword.style.display = 'block';
                     tabInfo.style.display = 'none';
+                    tabAddresses.style.display = 'none';
                     tabPassword.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    tabAddresses.style.display = 'block';
+                    tabInfo.style.display = 'none';
+                    tabPassword.style.display = 'none';
+                    loadAddresses();
+                    tabAddresses.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             }
 
@@ -280,6 +328,85 @@
                     });
                 }
             });
+            // Address book handlers
+            const addressList = document.getElementById('addressList');
+            const tplAddressItem = document.getElementById('tplAddressItem');
+            const dlgAddress = document.getElementById('dlgAddress');
+            const btnAddAddress = document.getElementById('btnAddAddress');
+            const btnCloseDlg = document.getElementById('btnCloseDlg');
+            const formAddress = document.getElementById('formAddress');
+
+            function renderAddresses(addresses){
+                addressList.innerHTML = '';
+                if(!addresses || addresses.length === 0){
+                    addressList.innerHTML = '<p class="muted">Chưa có địa chỉ nào.</p>';
+                    return;
+                }
+                addresses.forEach(function(a){
+                    const node = tplAddressItem.content.cloneNode(true);
+                    node.querySelector('[data-field="full_name"]').textContent = a.full_name;
+                    node.querySelector('[data-field="phone"]').textContent = a.phone;
+                    node.querySelector('[data-field="address_line"]').textContent = a.address_line;
+                    node.querySelector('[data-field="ward"]').textContent = a.ward || '';
+                    node.querySelector('[data-field="district"]').textContent = a.district || '';
+                    node.querySelector('[data-field="city"]').textContent = a.city || '';
+                    node.querySelector('[data-field="default"]').textContent = a.is_default ? 'Mặc định' : '';
+                    const el = node.firstElementChild;
+                    el.querySelector('[data-action="set-default"]').addEventListener('click', function(){ setDefaultAddress(a.id); });
+                    el.querySelector('[data-action="delete"]').addEventListener('click', function(){ deleteAddress(a.id); });
+                    addressList.appendChild(node);
+                });
+            }
+
+            function loadAddresses(){
+                fetch('{{ route('account.addresses.list') }}')
+                    .then(r=>r.json())
+                    .then(d=>{ if(d.success) renderAddresses(d.addresses); });
+            }
+
+            function setDefaultAddress(id){
+                fetch(`/account/addresses/${id}/default`, { method:'POST', headers:{ 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })
+                    .then(r=>r.json()).then(d=>{ if(d.success) loadAddresses(); else alert('Không thể đặt mặc định'); });
+            }
+            function deleteAddress(id){
+                if(!confirm('Xóa địa chỉ này?')) return;
+                fetch(`/account/addresses/${id}`, { method:'DELETE', headers:{ 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })
+                    .then(r=>r.json()).then(d=>{ if(d.success) loadAddresses(); else alert('Không thể xóa'); });
+            }
+
+            if(btnAddAddress) btnAddAddress.addEventListener('click', function(){ dlgAddress.showModal(); });
+            if(btnCloseDlg) btnCloseDlg.addEventListener('click', function(){ dlgAddress.close(); });
+            if(formAddress){
+                formAddress.addEventListener('submit', function(e){
+                    e.preventDefault();
+                    const fd = new FormData(formAddress);
+                    const submitBtn = formAddress.querySelector('button[type="submit"]');
+                    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Đang lưu...'; }
+                    fetch('{{ route('account.addresses.add') }}', {
+                        method:'POST',
+                        headers:{
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: fd
+                    })
+                    .then(r=>{
+                        if(!r.ok){ return r.json().then(e=>{ throw new Error(e.message || 'Lưu thất bại'); }); }
+                        return r.json();
+                    })
+                    .then(d=>{ 
+                        if(d.success){ 
+                            dlgAddress.close(); 
+                            formAddress.reset(); 
+                            loadAddresses(); 
+                        } else { 
+                            alert('Không thể lưu địa chỉ'); 
+                        } 
+                    })
+                    .catch(err=>{ alert(err.message); })
+                    .finally(()=>{ if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Lưu'; } });
+                });
+            }
         })();
     </script>
 </body>
