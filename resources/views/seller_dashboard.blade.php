@@ -150,7 +150,7 @@
             }, 'user'])->latest()->get();
 
             $completedCount = $orders->where('status', 'completed')->count();
-            $undeliveredCount = $orders->whereIn('status', ['pending', 'shipping'])->count();
+            $undeliveredCount = $orders->whereIn('status', ['pending', 'shipped'])->count();
             $cancelledCount = $orders->where('status', 'cancelled')->count();
         ?>
         <div class="card" style="margin-bottom:16px;">
@@ -183,7 +183,7 @@
 
             <div class="tabs">
                 <button class="tab active" data-tab="pending">Chờ xử lý</button>
-                <button class="tab" data-tab="shipping">Đang giao</button>
+                <button class="tab" data-tab="shipped">Đang giao</button>
                 <button class="tab" data-tab="completed">Hoàn thành</button>
                 <button class="tab" data-tab="cancelled">Đã hủy</button>
             </div>
@@ -822,10 +822,10 @@
                     break;
                 case 'shipped':
                     actionHtml = `
-                        <span style="padding:4px 8px; border-radius:4px; background:#a7f3d0; color:#065f46; font-size:12px;">Đã giao</span>
+                        <button onclick="markDelivered(${order.id}, this)" class="btn orange" style="padding:6px 12px; border-radius:4px;" data-order-id="${order.id}" data-original-text="Giao hàng thành công">Giao hàng thành công</button>
                     `;
-                    statusText = 'Đã giao';
-                    statusColor = '#065f46';
+                    statusText = 'Đang giao';
+                    statusColor = '#92400e';
                     break;
                 case 'completed':
                     actionHtml = `
@@ -906,7 +906,7 @@
             if (data.success) {
                 const successDiv = document.createElement('div');
                 successDiv.className = 'success-message';
-                successDiv.textContent = 'Đã chuyển trạng thái sang Đã giao!';
+                successDiv.textContent = 'Đã chuyển trạng thái sang Đang giao!';
                 successDiv.style.marginBottom = '12px';
                 const list = document.getElementById('ordersList');
                 if (list) {
@@ -917,12 +917,14 @@
                 if (order) {
                     order.status = 'shipped';
                 }
-                // Làm mới danh sách đơn hàng
-                const activeTab = document.querySelector('.tab.active');
-                const currentStatus = activeTab ? activeTab.getAttribute('data-tab') : 'pending';
+                // Tự động chuyển sang tab "Đang giao" và làm mới danh sách
+                const shippedTab = document.querySelector('.tab[data-tab="shipped"]');
+                const tabs = document.querySelectorAll('.tab[data-tab]');
+                tabs.forEach(t => t.classList.remove('active'));
+                if (shippedTab) shippedTab.classList.add('active');
                 const from = document.getElementById('filterFrom').value;
                 const to = document.getElementById('filterTo').value;
-                renderOrders(currentStatus, from, to);
+                renderOrders('shipped', from, to);
             } else {
                 alert('Lỗi: ' + (data.message || 'Không thể cập nhật trạng thái.'));
             }
@@ -936,6 +938,63 @@
             button.textContent = 'Xử lý đơn hàng';
         });
     }
+    // Expose to global so inline onclick can access
+    window.updateOrderStatus = updateOrderStatus;
+
+    function markDelivered(orderId, button) {
+        console.log('Clicked Giao hàng thành công for order:', orderId);
+        if (!button) {
+            alert('Lỗi: Không tìm thấy nút.');
+            return;
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (!csrfToken) {
+            alert('Lỗi: Thiếu CSRF token');
+            return;
+        }
+
+        button.disabled = true;
+        const original = button.textContent;
+        button.textContent = 'Đang cập nhật...';
+
+        fetch(`/orders/${orderId}/update-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ status: 'completed' })
+        })
+        .then(r => {
+            if (!r.ok) return r.json().then(e => { throw new Error(e.message || 'Cập nhật thất bại'); });
+            return r.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const order = allOrders.find(o => o.id === orderId);
+                if (order) order.status = 'completed';
+                const completedTab = document.querySelector('.tab[data-tab="completed"]');
+                const tabs = document.querySelectorAll('.tab[data-tab]');
+                tabs.forEach(t => t.classList.remove('active'));
+                if (completedTab) completedTab.classList.add('active');
+                const from = document.getElementById('filterFrom').value;
+                const to = document.getElementById('filterTo').value;
+                renderOrders('completed', from, to);
+            } else {
+                alert(data.message || 'Không thể cập nhật.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert(err.message);
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.textContent = original;
+        });
+    }
+    window.markDelivered = markDelivered;
 
     function bindOrders() {
         console.log('Binding orders tab...');

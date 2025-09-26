@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Address;
 
 class ProfileController extends Controller
 {
@@ -63,5 +64,49 @@ class ProfileController extends Controller
             'success' => true,
             'message' => 'Đổi mật khẩu thành công',
         ]);
+    }
+
+    public function listAddresses()
+    {
+        $addresses = Auth::user()->addresses()->latest()->get();
+        return response()->json(['success' => true, 'addresses' => $addresses]);
+    }
+
+    public function addAddress(Request $request)
+    {
+        $data = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'address_line' => 'required|string|max:255',
+            'ward' => 'nullable|string|max:255',
+            'district' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            // Không validate boolean trực tiếp để tránh giá trị 'on' bị fail
+        ]);
+
+        $data['user_id'] = Auth::id();
+        $isDefault = $request->boolean('is_default');
+        $data['is_default'] = $isDefault;
+        if ($isDefault) {
+            Address::where('user_id', Auth::id())->update(['is_default' => false]);
+        }
+        $addr = Address::create($data);
+        return response()->json(['success' => true, 'address' => $addr]);
+    }
+
+    public function setDefaultAddress($id)
+    {
+        $addr = Address::where('user_id', Auth::id())->findOrFail($id);
+        Address::where('user_id', Auth::id())->update(['is_default' => false]);
+        $addr->is_default = true;
+        $addr->save();
+        return response()->json(['success' => true]);
+    }
+
+    public function deleteAddress($id)
+    {
+        $addr = Address::where('user_id', Auth::id())->findOrFail($id);
+        $addr->delete();
+        return response()->json(['success' => true]);
     }
 }

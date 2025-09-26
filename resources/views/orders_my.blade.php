@@ -41,13 +41,13 @@
         <!-- Tabs -->
         <div class="tabs">
             <button onclick="showTab('pending')" class="tab-btn">Đang xử lý</button>
-            <button onclick="showTab('shipping')" class="tab-btn">Đang giao hàng</button>
+            <button onclick="showTab('shipped')" class="tab-btn">Đang giao hàng</button>
             <button onclick="showTab('completed')" class="tab-btn">Hoàn thành</button>
             <button onclick="showTab('cancelled')" class="tab-btn">Đã hủy</button>
         </div>
 
         <!-- Nội dung các tab -->
-        @foreach (['pending'=>'Đang xử lý','shipping'=>'Đang giao hàng','completed'=>'Hoàn thành','cancelled'=>'Đã hủy'] as $status => $label)
+        @foreach (['pending'=>'Đang xử lý','shipped'=>'Đang giao hàng','completed'=>'Hoàn thành','cancelled'=>'Đã hủy'] as $status => $label)
             <div class="tab-content" id="tab-{{ $status }}" style="display:none;">
                 @php
                     $list = $orders->where('status', $status);
@@ -86,6 +86,15 @@
                                 </div>
                             @endforeach
                         </div>
+                        @if($status === 'pending')
+                            <div style="padding:12px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #e5e7eb;">
+                                <button class="tab-btn" onclick="cancelOrder({{ $order->id }})">Hủy đơn hàng</button>
+                            </div>
+                        @elseif($status === 'cancelled')
+                            <div style="padding:12px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #e5e7eb;">
+                                <a class="tab-btn" href="{{ route('product.show', $order->items->first()->product_id ?? 0) }}">Mua lại</a>
+                            </div>
+                        @endif
                     </div>
                 @empty
                     <p class="muted">Không có đơn hàng {{ strtolower($label) }}.</p>
@@ -104,6 +113,25 @@
         }
         // mở mặc định tab Pending
         showTab('pending');
+
+        function cancelOrder(orderId){
+            if(!confirm('Bạn muốn hủy đơn hàng này?')) return;
+            fetch(`/orders/${orderId}/cancel`, {
+                method:'POST',
+                headers:{
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            }).then(r=>{
+                if(!r.ok) return r.json().then(e=>{throw new Error(e.message||'Hủy không thành công')});
+                return r.json();
+            }).then(data=>{
+                if(data.success){
+                    location.reload();
+                } else {
+                    alert(data.message||'Không thể hủy');
+                }
+            }).catch(err=>alert(err.message));
+        }
     </script>
 </body>
 </html>

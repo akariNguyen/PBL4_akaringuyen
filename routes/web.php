@@ -51,6 +51,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/account/password', [ProfileController::class, 'changePassword'])->name('account.password.update');
     Route::get('/account/shop', function () { return view('account_shop'); })->name('account.shop');
     Route::post('/account/shop', [ShopController::class, 'updateAccount'])->name('account.shop.update');
+    // Address book APIs
+    Route::get('/account/addresses', [ProfileController::class, 'listAddresses'])->name('account.addresses.list');
+    Route::post('/account/addresses', [ProfileController::class, 'addAddress'])->name('account.addresses.add');
+    Route::post('/account/addresses/{id}/default', [ProfileController::class, 'setDefaultAddress'])->name('account.addresses.set_default');
+    Route::delete('/account/addresses/{id}', [ProfileController::class, 'deleteAddress'])->name('account.addresses.delete');
 });
 
 // Products (seller only)
@@ -68,4 +73,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
     Route::get('/account/orders', [OrderController::class, 'myOrders'])->name('orders.my');
     Route::post('/orders/{id}/update-status', [OrderController::class, 'updateStatus'])->middleware('auth');
+    // Người mua hủy đơn hàng của chính mình (chỉ khi đang chờ xử lý)
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelByCustomer'])->name('orders.cancel');
 });

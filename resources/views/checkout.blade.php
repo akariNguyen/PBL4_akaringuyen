@@ -25,6 +25,7 @@ $finalTotal = $totalPrice + $shippingFee - $discount;
         .address-section { margin-bottom: 20px; }
         .address-section h3 { color: var(--primary); }
         .address-input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .address-select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
 
         /* sản phẩm */
         .product-summary { margin-bottom: 20px; }
@@ -68,7 +69,21 @@ $finalTotal = $totalPrice + $shippingFee - $discount;
 
             <div class="address-section">
                 <h3>Địa Chỉ Nhận Hàng</h3>
-                <input type="text" class="address-input" name="address" placeholder="Nhập địa chỉ giao hàng..." value="{{ old('address') }}">
+                @php
+                    $defaultText = $defaultAddress ? ($defaultAddress->full_name.' - '.$defaultAddress->phone.' | '.$defaultAddress->address_line.' '.$defaultAddress->ward.' '.$defaultAddress->district.' '.$defaultAddress->city) : '';
+                @endphp
+                <select name="address_id" class="address-select">
+                    <option value="">-- Chọn địa chỉ giao hàng --</option>
+                    @if($defaultAddress)
+                        <option value="{{ $defaultAddress->id }}" selected> Mặc định: {{ $defaultText }}</option>
+                    @endif
+                    @foreach(($addresses ?? collect()) as $addr)
+                        @if(!$defaultAddress || $addr->id !== $defaultAddress->id)
+                            <option value="{{ $addr->id }}">{{ $addr->full_name }} - {{ $addr->phone }} | {{ $addr->address_line }} {{ $addr->ward }} {{ $addr->district }} {{ $addr->city }}</option>
+                        @endif
+                    @endforeach
+                </select>
+                <input type="text" class="address-input" name="address" placeholder="Hoặc nhập địa chỉ khác..." value="{{ old('address', $defaultText) }}">
                 <p style="color: red;">{{ $errors->first('address') }}</p>
             </div>
 
