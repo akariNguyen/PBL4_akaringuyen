@@ -200,64 +200,116 @@
     </template>
 
     <template id="tpl-products-all">
-        <?php
-            $sellerProducts = \App\Models\Product::where('seller_id', auth()->id())
-                ->with('category')
-                ->latest()
-                ->get();
-        ?>
-        <div class="card" style="margin-bottom:16px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                <h2 style="margin:0;">Quản lý tất cả sản phẩm</h2>
-                <div style="display:flex; gap:8px;">
-                    <input id="productsSearch" type="text" placeholder="Tìm kiếm theo tên..." style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; width:260px;">
-                    <a href="#" data-view="product_add" style="text-decoration:none; padding:10px 14px; border-radius:8px; background:#2563eb; border:1px solid #2563eb; color:#fff; display:flex; align-items:center;">+ Thêm sản phẩm</a>
-                </div>
+    <?php
+        $sellerProducts = \App\Models\Product::where('seller_id', auth()->id())
+            ->with('category')
+            ->latest()
+            ->get();
+    ?>
+    <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <h2 style="margin:0;">Quản lý tất cả sản phẩm</h2>
+            <div style="display:flex; gap:8px;">
+                <input id="productsSearch" type="text" placeholder="Tìm kiếm theo tên..." 
+                       style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; width:260px;">
+                <a href="#" onclick="event.preventDefault(); navigate('product_add')" 
+                   style="text-decoration:none; padding:10px 14px; border-radius:8px; background:#2563eb; border:1px solid #2563eb; color:#fff; display:flex; align-items:center;">
+                   + Thêm sản phẩm
+                </a>
             </div>
         </div>
-        <style>
-            #productsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
-        </style>
-        <div class="grid" id="productsGrid">
-            @foreach($sellerProducts as $p)
-                <?php
-                    $imgs = is_array($p->images) ? $p->images : [];
-                    $img = count($imgs) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
-                    $statusColor = match($p->status){ 'in_stock' => '#16a34a', 'out_of_stock' => '#dc2626', 'discontinued' => '#6b7280', default => '#f59e0b', };
-                    $statusText = match($p->status){ 'in_stock' => 'Còn hàng', 'out_of_stock' => 'Hết hàng', 'discontinued' => 'Ngừng kinh doanh', default => 'Chờ duyệt', };
-                ?>
-                <div class="card" data-name="{{ Str::lower($p->name) }}" style="width:100%;">
-                    <div style="display:flex; align-items:flex-start; gap:20px; padding:20px; border:1px solid #e5e7eb; border-radius:12px; background:#fff;">
-                        <img src="{{ $img }}" alt="{{ $p->name }}" style="width:150px; height:150px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb;">
-                        <div style="flex:1;">
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                                <h3 style="margin:0; font-size:20px; font-weight:600;">{{ $p->name }}</h3>
-                                <span style="font-size:14px; padding:6px 12px; border-radius:999px; background:{{ $statusColor }}20; color:{{ $statusColor }}; border:1px solid {{ $statusColor }}33;">{{ $statusText }}</span>
+    </div>
+    <style>
+        #productsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
+        .view-text { display:inline; }
+        .edit-input { display:none; }
+        .save-bar { display:none; }
+        .product-card.editing .view-text { display:none; }
+        .product-card.editing .edit-input { display:inline-block; }
+        .product-card.editing .save-bar { display:flex; gap:8px; margin-top:8px; }
+    </style>
+
+    <div class="grid" id="productsGrid">
+        @foreach($sellerProducts as $p)
+            <?php
+                $imgs = is_array($p->images) ? $p->images : [];
+                $img = count($imgs) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
+                $statusColor = match($p->status){ 
+                    'in_stock' => '#16a34a', 
+                    'out_of_stock' => '#dc2626', 
+                    'discontinued' => '#6b7280', 
+                    default => '#f59e0b', 
+                };
+                $statusText = match($p->status){ 
+                    'in_stock' => 'Còn hàng', 
+                    'out_of_stock' => 'Hết hàng', 
+                    'discontinued' => 'Ngừng kinh doanh', 
+                    default => 'Chờ duyệt', 
+                };
+            ?>
+            <form method="post" action="{{ route('products.update', $p->id) }}" 
+                  class="card product-card" style="width:100%;">
+                @csrf
+                @method('PUT')
+
+                <div style="display:flex; align-items:flex-start; gap:20px; padding:20px;">
+                    <img src="{{ $img }}" alt="{{ $p->name }}" 
+                         style="width:150px; height:150px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb;">
+                    
+                    <div style="flex:1;">
+                        <!-- Tên + Trạng thái -->
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                            <h3 style="margin:0; font-size:20px; font-weight:600;">
+                                <span class="view-text">{{ $p->name }}</span>
+                                <input class="edit-input" type="text" name="name" value="{{ $p->name }}">
+                            </h3>
+                            <span style="font-size:14px; padding:6px 12px; border-radius:999px; background:{{ $statusColor }}20; color:{{ $statusColor }}; border:1px solid {{ $statusColor }}33;">
+                                {{ $statusText }}
+                            </span>
+                        </div>
+
+                        <!-- Đã bán + Tồn kho -->
+                        <div style="display:flex; gap:16px; margin-bottom:16px;">
+                            <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
+                                <div style="font-weight:700; font-size:18px;">{{ $p->sold_quantity }}</div>
+                                <div style="font-size:14px; color:#6b7280;">Đã bán</div>
                             </div>
-                            <div style="display:flex; gap:16px; margin-bottom:16px;">
-                                <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
-                                    <div style="font-weight:700; font-size:18px;">{{ $p->sold_quantity }}</div>
-                                    <div style="font-size:14px; color:#6b7280;">Đã bán</div>
-                                </div>
-                                <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
-                                    <div style="font-weight:700; font-size:18px;">{{ $p->quantity - $p->sold_quantity }}</div>
-                                    <div style="font-size:14px; color:#6b7280;">Tồn kho</div>
-                                </div>
+                            <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
+                                <div class="view-text" style="font-weight:700; font-size:18px;">{{ $p->quantity }}</div>
+                                <input class="edit-input" type="number" name="quantity" value="{{ $p->quantity }}">
+                                <div style="font-size:14px; color:#6b7280;">Tồn kho</div>
                             </div>
-                            <div style="margin-bottom:16px; font-weight:800; color:#16a34a; background:#dcfce7; border:1px solid #86efac; padding:12px 16px; border-radius:8px; display:inline-block;">
-                                {{ number_format($p->price, 0, ',', '.') }} VND
-                            </div>
-                            <div style="margin-bottom:16px; font-size:14px; color:#6b7280;">Loại sản phẩm: <span style="color:#111827; font-weight:600;">{{ $p->category?->name ?? '—' }}</span></div>
-                            <div style="display:flex; justify-content:flex-end; gap:12px;">
-                                <a href="#" style="text-decoration:none; padding:10px 16px; border-radius:8px; border:1px solid #e5e7eb; color:#111827; background:#fff; font-weight:500;">Quay lại</a>
-                                <a href="#" style="text-decoration:none; padding:10px 16px; border-radius:8px; background:#15803d; border:1px solid #15803d; color:#fff; font-weight:500;">Chỉnh sửa</a>
+                        </div>
+
+                        <!-- Giá -->
+                        <div style="margin-bottom:16px; font-weight:800; color:#16a34a;">
+                            <span class="view-text">{{ number_format($p->price, 0, ',', '.') }} VND</span>
+                            <input class="edit-input" type="number" name="price" value="{{ $p->price }}">
+                        </div>
+
+                        <!-- Loại -->
+                        <div style="margin-bottom:16px; font-size:14px; color:#6b7280;">
+                            Loại sản phẩm:
+                            <span class="view-text" style="color:#111827; font-weight:600;">{{ $p->category?->name ?? '—' }}</span>
+                            <input class="edit-input" type="text" name="category" value="{{ $p->category?->name ?? '' }}">
+                        </div>
+
+                        <!-- Buttons -->
+                        <div style="display:flex; justify-content:flex-end; gap:12px;">
+                            <button type="button" class="btn red">Xóa</button>
+                            <button type="button" class="btn green btn-edit">Chỉnh sửa</button>
+                            <div class="save-bar">
+                                <button type="submit" class="btn primary">Lưu</button>
+                                <button type="button" class="btn btn-cancel">Hủy</button>
                             </div>
                         </div>
                     </div>
                 </div>
-            @endforeach
-        </div>
-    </template>
+            </form>
+        @endforeach
+    </div>
+</template>
+
 
     <template id="tpl-product-add">
         <div class="card">
@@ -936,6 +988,16 @@
             button.textContent = 'Xử lý đơn hàng';
         });
     }
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn-edit')) {
+            const card = e.target.closest('.product-card');
+            card.classList.add('editing');
+        }
+        if (e.target.classList.contains('btn-cancel')) {
+            const card = e.target.closest('.product-card');
+            card.classList.remove('editing');
+        }
+    });
 
     function bindOrders() {
         console.log('Binding orders tab...');
@@ -966,6 +1028,7 @@
 
         renderOrders('pending');
     }
+    window.navigate = navigate;
 })();
 </script>
 </body>
