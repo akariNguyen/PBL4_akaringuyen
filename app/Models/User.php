@@ -52,6 +52,10 @@ class User extends Authenticatable
             'status' => 'string',
         ];
     }
+    public function reviews() {
+    return $this->hasMany(Review::class);
+    }
+
 
     public function addresses()
     {

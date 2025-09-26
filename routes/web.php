@@ -6,6 +6,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ReviewController;
 
 // Trang chủ
 Route::get('/', function () {
@@ -23,6 +24,8 @@ Route::post('/register', [AuthController::class, 'register']);
 // Route đăng xuất
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+Route::post('/products/{id}/reviews', [ReviewController::class, 'store'])->middleware('auth')->name('reviews.store');
+
 // Routes cho dashboard (cần đăng nhập)
 Route::middleware('auth')->group(function () {
     Route::get('/customer/dashboard', function () {
@@ -38,11 +41,15 @@ Route::middleware('auth')->group(function () {
     })->name('admin.dashboard');
 });
 
-// Shop routes (seller only)
+// Products (seller only)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/shops/create', [ShopController::class, 'create'])->name('shops.create');
-    Route::post('/shops', [ShopController::class, 'store'])->name('shops.store');
+    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
+    Route::put('/products/{id}', [ProductController::class, 'update'])->name('products.update');
+    Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('products.destroy');
 });
+
 
 // Account pages
 Route::middleware(['auth'])->group(function () {
@@ -63,6 +70,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
     Route::post('/products', [ProductController::class, 'store'])->name('products.store');
     Route::get('/products/{id}', [ProductController::class, 'show'])->name('product.show');
+    Route::put('/products/{id}', [ProductController::class, 'update'])->name('products.update');
 });
 Route::middleware(['auth'])->group(function () {
     Route::get('/checkout/{productId}', [CheckoutController::class, 'index'])->name('checkout');
@@ -73,6 +81,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
     Route::get('/account/orders', [OrderController::class, 'myOrders'])->name('orders.my');
     Route::post('/orders/{id}/update-status', [OrderController::class, 'updateStatus'])->middleware('auth');
+
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/products/{id}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+
     // Người mua hủy đơn hàng của chính mình (chỉ khi đang chờ xử lý)
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelByCustomer'])->name('orders.cancel');
+
 });
