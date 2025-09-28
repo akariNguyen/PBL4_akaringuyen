@@ -78,6 +78,7 @@
                 <div class="dropdown-content">
                     <a href="{{ route('account.personal') }}">Thông tin cá nhân</a>
                     <a href="{{ route('orders.my') }}">Đơn hàng của tôi</a>
+                    <a href="{{ route('cart.my') }}">Giỏ hàng của tôi</a>
                     <form method="POST" action="{{ route('logout') }}" style="display:inline;">
                         @csrf
                         <button type="submit" style="width:100%; text-align:left; background:none; border:none; cursor:pointer; padding:8px 12px; color:#111827;">Đăng xuất</button>

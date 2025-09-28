@@ -83,19 +83,6 @@ class AuthController extends Controller
             'password' => 'required|string|min:6|confirmed',
             'role' => 'required|in:customer,seller',
             'gender' => 'required|in:male,female',
-        ], [
-            'name.required' => 'Họ tên là bắt buộc',
-            'email.required' => 'Email là bắt buộc',
-            'email.email' => 'Email không hợp lệ',
-            'email.unique' => 'Email này đã được sử dụng',
-            'phone.required' => 'Số điện thoại là bắt buộc',
-            'password.required' => 'Mật khẩu là bắt buộc',
-            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
-            'password.confirmed' => 'Mật khẩu xác nhận không khớp',
-            'role.required' => 'Vai trò là bắt buộc',
-            'role.in' => 'Vai trò không hợp lệ',
-            'gender.required' => 'Giới tính là bắt buộc',
-            'gender.in' => 'Giới tính không hợp lệ',
         ]);
 
         if ($validator->fails()) {
@@ -104,34 +91,38 @@ class AuthController extends Controller
                 ->withInput($request->except('password', 'password_confirmation'));
         }
 
-        // Tạo user mới (chưa gán role seller cho tới khi tạo shop thành công)
-        $initialRole = $request->role === 'seller' ? 'customer' : 'customer';
-        $defaultAvatar = $request->gender === 'female'
-            ? '/Picture/avata_macdinh_nu.png'
-            : '/Picture/avata_macdinh_nam.png';
+        // Nếu là customer → tạo user ngay
+        if ($request->role === 'customer') {
+            $defaultAvatar = $request->gender === 'female'
+                ? '/Picture/avata_macdinh_nu.png'
+                : '/Picture/avata_macdinh_nam.png';
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
-            'gender' => $request->gender,
-            'avatar_path' => $defaultAvatar,
-            'role' => $initialRole,
-            'status' => 'active',
-        ]);
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'password' => Hash::make($request->password),
+                'gender' => $request->gender,
+                'avatar_path' => $defaultAvatar,
+                'role' => 'customer',
+                'status' => 'active',
+            ]);
 
-        // Đăng nhập tự động sau khi đăng ký
-        Auth::login($user);
+            Auth::login($user);
 
-        // Nếu người dùng chọn vai trò người bán, dẫn tới tạo shop và đánh dấu ý định trong session
-        if ($request->role === 'seller') {
-            $request->session()->put('intent_seller', true);
-            return redirect()->route('shops.create')->with('success', 'Đăng ký thành công! Hãy tạo thông tin shop của bạn.');
+            return redirect()->route('customer.dashboard')
+                ->with('success', 'Đăng ký thành công!');
         }
 
-        return redirect()->route('customer.dashboard')->with('success', 'Đăng ký thành công!');
+        // Nếu là seller → chưa tạo user, chỉ lưu thông tin vào session
+        $request->session()->put('pending_seller', $request->only([
+            'name', 'email', 'phone', 'password', 'gender'
+        ]));
+
+        return redirect()->route('shops.create')
+            ->with('success', 'Hãy tạo shop để hoàn tất đăng ký Người bán.');
     }
+
 
     /**
      * Đăng xuất

@@ -72,10 +72,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/products/{id}', [ProductController::class, 'show'])->name('product.show');
     Route::put('/products/{id}', [ProductController::class, 'update'])->name('products.update');
 });
-Route::middleware(['auth'])->group(function () {
-    Route::get('/checkout/{productId}', [CheckoutController::class, 'index'])->name('checkout');
-    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-});
+
 // Orders
 Route::middleware(['auth'])->group(function () {
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
@@ -90,4 +87,31 @@ Route::middleware(['auth'])->group(function () {
     // Người mua hủy đơn hàng của chính mình (chỉ khi đang chờ xử lý)
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelByCustomer'])->name('orders.cancel');
 
+});
+
+use App\Http\Controllers\CartController;
+
+Route::middleware('auth')->group(function () {
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/add/{productId}', [CartController::class, 'add'])->name('cart.add');
+    Route::delete('/cart/remove/{itemId}', [CartController::class, 'remove'])->name('cart.remove');
+
+    // 👇 Route mới
+    Route::get('/my-cart', [CartController::class, 'myCart'])->name('cart.my');
+});
+
+
+
+Route::get('/shops/create', [ShopController::class, 'create'])->name('shops.create');
+Route::post('/shops', [ShopController::class, 'store'])->name('shops.store');
+
+Route::middleware('auth')->group(function () {
+    // Thanh toán 1 sản phẩm (Buy Now)
+    Route::get('/checkout/{productId}', [CheckoutController::class, 'index'])->name('checkout');
+
+    // Thanh toán nhiều sản phẩm từ giỏ (SỬA LẠI)
+    Route::post('/checkout/from-cart', [CheckoutController::class, 'fromCart'])->name('checkout.fromCart');
+
+    // Xác nhận đặt hàng
+    Route::post('/checkout/store', [CheckoutController::class, 'store'])->name('checkout.store');
 });

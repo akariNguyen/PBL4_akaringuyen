@@ -19,17 +19,38 @@ class ProductController extends Controller
         return view('product_create');
     }
 
-    public function show($id)
+   public function show(Request $request, $id)
 {
-    $product = Product::with('reviews.user')->findOrFail($id);
+    $product = Product::with(['reviews.user', 'seller.shop'])->findOrFail($id);
 
     $avgRating = $product->reviews()->avg('rating');
-    $reviews = $product->reviews()->latest()->get();
 
-    $variations = [ /* ... như bạn để ... */ ];
+    $filter = $request->get('filter', 'all'); 
+    $reviewsQuery = $product->reviews()->with('user');
 
-    return view('product_show', compact('product', 'variations', 'avgRating', 'reviews'));
+    switch ($filter) {
+        case '5stars': $reviewsQuery->where('rating', 5); break;
+        case '4stars': $reviewsQuery->where('rating', 4); break;
+        case '3stars': $reviewsQuery->where('rating', 3); break;
+        case '2stars': $reviewsQuery->where('rating', 2); break;
+        case '1star':  $reviewsQuery->where('rating', 1); break;
+        case 'oldest': $reviewsQuery->oldest(); break;
+        case 'newest': $reviewsQuery->latest(); break;
+        default:       $reviewsQuery->latest(); break;
+    }
+
+    $reviews = $reviewsQuery->get();
+    $variations = [];
+
+    $shop = $product->seller && $product->seller->role === 'seller'
+    ? $product->seller->shop
+    : null;
+
+    return view('product_show', compact('product', 'variations', 'avgRating', 'reviews', 'filter', 'shop'));
 }
+
+
+
 
     public function store(Request $request)
     {

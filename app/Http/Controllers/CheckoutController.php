@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Order;
-use App\Models\OrderItem; // Thêm import
+use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 
@@ -117,4 +117,81 @@ class CheckoutController extends Controller
     {
         return view('checkout-success')->with('message', 'Cảm ơn bạn đã đặt hàng!');
     }
+
+    /**
+     * Checkout from cart with multiple items
+     *
+     * @param Request $request
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
+    /**
+ * Checkout from cart with multiple items
+ *
+ * @param Request $request
+ * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+ */
+public function fromCart(Request $request)
+{
+    // ✅ Debug log để kiểm tra dữ liệu nhận được
+    \Log::info('Checkout from cart request:', [
+        'user_id' => auth()->id(),
+        'selected_items' => $request->items,
+        'all_input' => $request->all()
+    ]);
+
+    $cart = auth()->user()->cart()->with('items.product.seller.shop')->first();
+
+    // ✅ Kiểm tra kỹ hơn nếu không có items nào được chọn
+    if (empty($request->items)) {
+        \Log::warning('No items selected for checkout', ['user_id' => auth()->id()]);
+        return redirect()->route('cart.my')->withErrors(['cart' => 'Bạn chưa chọn sản phẩm nào để thanh toán.']);
+    }
+
+    // Lọc ra những sản phẩm người dùng tick chọn trong giỏ
+    $selectedItems = $cart->items->whereIn('product_id', $request->items ?? []);
+
+    if ($selectedItems->isEmpty()) {
+        \Log::warning('Selected items not found in cart', [
+            'user_id' => auth()->id(),
+            'requested_items' => $request->items
+        ]);
+        return redirect()->route('cart.my')->withErrors(['cart' => 'Bạn chưa chọn sản phẩm nào để thanh toán.']);
+    }
+
+    // ✅ Kiểm tra tồn kho cho tất cả sản phẩm được chọn
+    foreach ($selectedItems as $item) {
+        $availableStock = $item->product->quantity - ($item->product->sold_quantity ?? 0);
+        if ($item->quantity > $availableStock) {
+            return redirect()->route('cart.my')->withErrors([
+                'cart' => "Sản phẩm {$item->product->name} vượt quá tồn kho! Chỉ còn {$availableStock} sản phẩm."
+            ]);
+        }
+    }
+
+    // Nhóm theo shop, sắp xếp A->Z
+    $grouped = $selectedItems->groupBy(fn($item) => $item->product->seller->shop->name ?? 'Không có Shop')
+                            ->sortKeys();
+
+    $addresses = auth()->user()->addresses()->latest()->get();
+    $defaultAddress = auth()->user()->defaultAddress()->first();
+
+    // ✅ Tính tổng tiền
+    $totalPrice = $selectedItems->sum(function($item) {
+        return $item->product->price * $item->quantity;
+    });
+    $shippingFee = 38000;
+    $discount = 10000;
+    $finalTotal = $totalPrice + $shippingFee - $discount;
+
+    // ✅ Return view checkout-multiple (đúng tên file)
+    return view('checkout-multiple', compact(
+        'grouped', 
+        'addresses', 
+        'defaultAddress', 
+        'totalPrice', 
+        'shippingFee', 
+        'discount', 
+        'finalTotal'
+    ));
+}
 }
