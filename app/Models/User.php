@@ -66,4 +66,22 @@ class User extends Authenticatable
     {
         return $this->hasOne(Address::class)->where('is_default', true);
     }
+    public function shop()
+{
+    return $this->hasOne(\App\Models\Shop::class, 'user_id');
+}
+    public function cart()
+    {
+        return $this->hasOne(Cart::class);
+    }
+
+    // Khi tạo user thì tạo luôn cart
+    protected static function booted()
+    {
+        static::created(function ($user) {
+        if ($user->role === 'customer') { // ✅ chỉ tạo giỏ hàng cho khách
+            $user->cart()->create();
+        }
+        });
+    }
 }
