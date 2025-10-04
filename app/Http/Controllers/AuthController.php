@@ -22,49 +22,53 @@ class AuthController extends Controller
      * Xử lý đăng nhập
      */
     public function login(Request $request)
-    {
-        // Validation
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required|min:6',
-        ], [
-            'email.required' => 'Email là bắt buộc',
-            'email.email' => 'Email không hợp lệ',
-            'password.required' => 'Mật khẩu là bắt buộc',
-            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
-        ]);
+{
+    // Validation
+    $validator = Validator::make($request->all(), [
+        'email' => 'required|email',
+        'password' => 'required|min:6',
+    ], [
+        'email.required' => 'Email là bắt buộc',
+        'email.email' => 'Email không hợp lệ',
+        'password.required' => 'Mật khẩu là bắt buộc',
+        'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+    ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput($request->except('password'));
-        }
-
-        // Thử đăng nhập
-        $credentials = $request->only('email', 'password');
-        
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-            
-            // Chuyển hướng dựa trên role
-            $user = Auth::user();
-            if ($user->role === 'admin') {
-                return redirect()->route('admin.dashboard');
-            } elseif ($user->role === 'seller') {
-                return redirect()->route('seller.dashboard');
-            } else {
-                return redirect()->route('customer.dashboard');
-            }
-        }
-
+    if ($validator->fails()) {
         return redirect()->back()
-            ->withErrors(['email' => 'Email hoặc mật khẩu không đúng'])
+            ->withErrors($validator)
             ->withInput($request->except('password'));
     }
 
-    /**
-     * Hiển thị form đăng ký
-     */
+    $credentials = $request->only('email', 'password');
+
+    // kiểm tra email có tồn tại không
+    $user = User::where('email', $request->email)->first();
+    if ($user && $user->status === 'inactive') {
+        return redirect()->back()
+            ->withErrors(['email' => 'Tài khoản của bạn đã bị cấm sử dụng'])
+            ->withInput($request->except('password'));
+    }
+
+    // Thử đăng nhập
+    if (Auth::attempt($credentials)) {
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        } elseif ($user->role === 'seller') {
+            return redirect()->route('seller.dashboard');
+        } else {
+            return redirect()->route('customer.dashboard');
+        }
+    }
+
+    return redirect()->back()
+        ->withErrors(['email' => 'Email hoặc mật khẩu không đúng'])
+        ->withInput($request->except('password'));
+}
+
     public function showRegisterForm()
     {
         return view('home', ['mode' => 'register']);
