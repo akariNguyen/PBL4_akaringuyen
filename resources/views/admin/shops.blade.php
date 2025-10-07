@@ -125,8 +125,10 @@
                                 </form>
                             </td>
                             <td>
-                                <a href="{{ route('admin.shops.show', $shop->user_id) }}" 
-                                   class="btn btn-sm btn-info">Xem thêm</a>
+                                <button type="button" class="btn btn-sm btn-info" onclick="viewShopDetail({{ $shop->user_id }})">
+                                    Xem thêm
+                                </button>
+
                             </td>
                         </tr>
                     @empty
@@ -134,7 +136,75 @@
                     @endforelse
                 </tbody>
             </table>
+            <div id="shop-detail-card" class="mt-4"></div>
         </div>
     </div>
 </div>
 @endsection
+@push('scripts')
+<script>
+function viewShopDetail(shopId) {
+    fetch(`/admin/shops/${shopId}/detail`)
+        .then(res => res.json())
+        .then(data => {
+            const shop = data.shop;
+            const seller = data.seller;
+
+            document.getElementById('shop-detail-card').innerHTML = `
+                <div class="card shadow-sm border-0 mt-3">
+                    <div class="card-body">
+                        <h4 class="mb-3">📋 Thông tin chi tiết Shop</h4>
+                        <div class="row align-items-center">
+                            <div class="col-md-2 text-center">
+                                <img src="${shop.logo_path ? '/storage/' + shop.logo_path : '/Picture/default_shop.png'}"
+                                     alt="Logo Shop"
+                                     style="height:80px;width:80px;border-radius:8px;object-fit:cover;">
+                            </div>
+                            <div class="col-md-10">
+                                <h5 class="fw-bold mb-1">${shop.name}</h5>
+                                <p class="text-muted mb-1">${shop.description ?? 'Không có mô tả.'}</p>
+                                <p class="mb-1"><strong>Trạng thái:</strong> ${shop.status}</p>
+                                <p class="mb-1"><strong>Ngày đăng ký:</strong> ${new Date(shop.created_at).toLocaleString('vi-VN')}</p>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h5 class="mt-3">👤 Thông tin Nhà bán hàng</h5>
+                        <p class="mb-1"><strong>Tên:</strong> ${seller.name}</p>
+                        <p class="mb-1"><strong>Email:</strong> ${seller.email}</p>
+                        <p class="mb-1"><strong>Số điện thoại:</strong> ${seller.phone ?? 'Chưa cập nhật'}</p>
+
+                        <hr>
+
+                        <h5 class="mt-3">📦 Thống kê Shop</h5>
+                        <div class="row text-center mt-3">
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 bg-light">
+                                    <h6>Sản phẩm đang bán</h6>
+                                    <h4 class="fw-bold">${data.inStockCount}</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 bg-light">
+                                    <h6>Sản phẩm đã bán</h6>
+                                    <h4 class="fw-bold">${data.soldCount}</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 bg-light">
+                                    <h6>Doanh thu</h6>
+                                    <h4 class="fw-bold text-success">${data.totalRevenue}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        })
+        .catch(err => console.error(err));
+}
+</script>
+@endpush
+

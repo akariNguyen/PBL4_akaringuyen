@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E‑Market</title>
+    <title>E-Market</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
         .search { flex:1; display:flex; gap:8px; }
         .search input { flex:1; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
         .search button { padding:10px 14px; border-radius:8px; background:var(--brand); color:#fff; border:1px solid var(--brand); cursor:pointer; }
-        .nav-actions { display:flex; align-items:center; gap:12px; margin-left: 50px; } /* Dịch sang trái 50px */
+        .nav-actions { display:flex; align-items:center; gap:12px; margin-left: 50px; }
         .nav-actions a { text-decoration:none; padding:8px 12px; border:1px solid var(--border); border-radius:8px; color:#111827; background:#fff; }
         .nav-actions a:hover { background:#f3f4f6; }
         .dropdown { position:relative; }
@@ -42,9 +42,11 @@
         .card { border:1px solid var(--border); border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
         .card img { width:100%; height:160px; object-fit:cover; display:block; background:#f3f4f6; }
         .card-body { padding:12px; }
-        .name { font-weight:600; margin-bottom:6px; }
-        .price { color:#ef4444; font-weight:700; }
-        .seller { color:var(--muted); font-size:13px; margin-top:4px; }
+        .name { font-weight:600; margin-bottom:4px; }
+        .info-row, .price-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--muted); margin-bottom:4px; }
+        .price { color:#ef4444; font-weight:700; font-size:15px; }
+        .sold { font-size:13px; color:var(--muted); }
+        .seller { color:var(--muted); font-size:13px; }
         .empty { text-align:center; color:var(--muted); padding:40px 16px; border:1px dashed var(--border); border-radius:12px; background:#fff; }
         @media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .grid { grid-template-columns: repeat(2, 1fr); } }
@@ -52,20 +54,31 @@
     </style>
 </head>
 <body>
-    <?php
-        $q = request('q');
-        $categoryId = request('c');
-        $categories = \App\Models\Category::orderBy('name')->get();
-        $productsQuery = \App\Models\Product::query()->with(['seller','category']);
-        if ($q) { $productsQuery->where('name', 'like', '%'.$q.'%'); }
-        if ($categoryId) { $productsQuery->where('category_id', $categoryId); }
-        $products = $productsQuery->latest()->take(40)->get();
-    ?>
+   <?php
+    use App\Models\Product;
+    use App\Models\Category;
+    use App\Models\OrderItem;
+
+    $q = request('q');
+    $categoryId = request('c');
+    $categories = Category::orderBy('name')->get();
+
+    $productsQuery = Product::query()
+        ->with(['seller.shop','category','reviews'])
+        ->where('status', 'in_stock')
+        ->whereHas('seller', fn($q) => $q->where('status', 'active'))
+        ->whereHas('seller.shop', fn($q) => $q->where('status', 'active'));
+
+    if ($q) $productsQuery->where('name', 'like', '%'.$q.'%');
+    if ($categoryId) $productsQuery->where('category_id', $categoryId);
+
+    $products = $productsQuery->latest()->take(40)->get();
+?>
 
     <div class="topbar">
         <div class="brand">
-            <img src="/Picture/logo.png" alt="E‑Market">
-            <span style="color:#2563eb;">E‑Market</span>
+            <img src="/Picture/logo.png" alt="E-Market">
+            <span style="color:#2563eb;">E-Market</span>
         </div>
         <form class="search" method="get" action="">
             <input type="text" name="q" value="{{ request('q') }}" placeholder="Tìm kiếm sản phẩm...">
@@ -108,6 +121,7 @@
                     @endforeach
                 </ul>
             </aside>
+
             <main class="panel content">
                 @if($products->isEmpty())
                     <div class="empty">Chưa có sản phẩm để hiển thị.</div>
@@ -115,17 +129,30 @@
                     <div class="grid">
                         @foreach($products as $p)
                             <?php
-                                $imgs = is_array($p->images) ? $p->images : [];
-                                $img = count($imgs) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
+                                $imgs = is_array($p->images) ? $p->images : json_decode($p->images, true);
+                                $img = (is_array($imgs) && count($imgs)) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
                                 $shop = \App\Models\Shop::find($p->seller_id);
                                 $supplier = $shop ? $shop->name : ($p->seller->name ?? 'Nhà cung cấp');
+                                $avgRating = round($p->reviews()->avg('rating') ?? 0, 1);
+                                $soldCount = OrderItem::where('product_id', $p->id)->sum('quantity');
                             ?>
                             <div class="card">
                                 <img src="{{ $img }}" alt="{{ $p->name }}">
                                 <div class="card-body">
                                     <div class="name">{{ $p->name }}</div>
-                                    <div class="price">{{ number_format($p->price, 0, ',', '.') }} đ</div>
-                                    <div class="seller">{{ $supplier }}</div>
+
+                                    <!-- Hàng shop + đánh giá -->
+                                    <div class="info-row">
+                                        <span>{{ $supplier }}</span>
+                                        <span>⭐ {{ $avgRating }}</span>
+                                    </div>
+
+                                    <!-- Hàng giá + đã bán -->
+                                    <div class="price-row">
+                                        <span class="price">{{ number_format($p->price, 0, ',', '.') }} đ</span>
+                                        <span class="sold">Đã bán: {{ $soldCount }}</span>
+                                    </div>
+
                                     <a href="{{ route('product.show', $p->id) }}" style="display:block; margin-top:8px; padding:8px 12px; border:none; border-radius:6px; background:#16a34a; color:#fff; font-weight:600; cursor:pointer; text-decoration:none;">
                                         Đặt hàng
                                     </a>

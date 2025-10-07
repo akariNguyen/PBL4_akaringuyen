@@ -47,7 +47,7 @@ class ShopController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'required|in:active,suspended,closed',
+           
             'logo' => 'nullable|image|max:2048',
         ]);
 
@@ -108,7 +108,7 @@ class ShopController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'required|in:active,suspended,closed',
+            'status' =>'suspended' ,
             'logo' => 'nullable|image|max:4096',
         ]);
 

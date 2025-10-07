@@ -65,7 +65,7 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'price'       => 'required|numeric|min:0',
             'quantity'    => 'required|integer|min:0',
-            'status'      => 'required|in:in_stock,out_of_stock,discontinued,pending',
+
             'images.*'    => 'nullable|image|max:4096',
         ]);
 
@@ -82,7 +82,7 @@ class ProductController extends Controller
             'description' => $validated['description'] ?? null,
             'price'       => $validated['price'],
             'quantity'    => $validated['quantity'],
-            'status'      => $validated['status'],
+               'status'      => 'pending',
         ]);
 
         if ($request->hasFile('images')) {
@@ -94,7 +94,7 @@ class ProductController extends Controller
             $product->save();
         }
 
-        return redirect()->route('seller.dashboard')->with('success', 'Tạo sản phẩm thành công');
+          return redirect()->route('seller.dashboard')->with('success', 'Sản phẩm đã được tạo và đang chờ duyệt.');
     }
 
     public function update(Request $request, $id)

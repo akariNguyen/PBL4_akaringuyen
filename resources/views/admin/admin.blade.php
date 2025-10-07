@@ -19,12 +19,30 @@
     .side-title { font-weight:700; margin-bottom:8px; font-size:14px; }
     .menu { list-style:none; margin:0; padding:0; }
     .menu li { margin:8px 0; }
-    .menu a { display:block; padding:8px 10px; text-decoration:none; color:#111827; border-radius:8px; }
+    .menu a { display:block; padding:8px 10px; text-decoration:none; color:#111827; border-radius:8px; cursor:pointer; }
     .menu a:hover { background:#f3f4f6; }
     .content { background:#f9fafb; padding:16px; }
     .card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
     .logout-btn { padding:10px 20px; border:1px solid #d1d5db; border-radius:8px; background:#fff; color:#111827; font-size:18px; font-weight:600; text-decoration:none; }
     .logout-btn:hover { background:#f3f4f6; }
+
+    /* Submenu style */
+    .menu .submenu {
+      display: none;
+      list-style: none;
+      padding-left: 16px;
+      margin: 4px 0;
+    }
+    .menu .submenu li a {
+      font-size: 14px;
+      color: #374151;
+      padding: 6px 12px;
+      display: block;
+      border-radius: 6px;
+    }
+    .menu .submenu li a:hover {
+      background: #f3f4f6;
+    }
   </style>
 
   {{-- CSS riêng cho từng view con --}}
@@ -51,18 +69,49 @@
   <!-- Layout -->
   <div class="layout">
     <!-- Sidebar -->
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="side-section">
         <div class="side-title">Quản trị hệ thống</div>
         <ul class="menu">
+          <!-- Quản lý người dùng -->
           <li><a href="{{ route('admin.users.index') }}">👥 Quản lý người dùng</a></li>
-          <li><a href="{{ route('admin.shops.index') }}">🏬 Quản lý shop bán hàng</a></li>
-          <li><a href="{{ route('admin.products.index') }}">📦 Quản lý sản phẩm</a></li>
+
+          <!-- Quản lý shop có submenu -->
+          <li class="has-submenu">
+            <a href="#">🏬 Quản lý shop ▾</a>
+            <ul class="submenu">
+              <li><a href="{{ route('admin.shops.index') }}">📋 Thông tin shop</a></li>
+              <li><a href="{{ route('admin.shops.pending') }}">⏳ Duyệt tạo shop</a></li>
+            </ul>
+          </li>
+
+          <!-- Quản lý sản phẩm có submenu -->
+          <li class="has-submenu">
+            <a href="#">📦 Quản lý sản phẩm ▾</a>
+            <ul class="submenu">
+              <li><a href="{{ route('admin.products.inStock') }}">📋 Danh sách sản phẩm</a></li>
+              <li><a href="{{ route('admin.products.pending') }}">⏳ Duyệt sản phẩm</a></li>
+            </ul>
+          </li>
+
+          <!-- Quản lý đơn hàng -->
           <li><a href="{{ route('admin.orders.index') }}">📑 Quản lý đơn hàng</a></li>
-          <li><a href="#">📊 Báo cáo & Phân tích</a></li>
+
+          <!-- ✅ Thống kê có submenu -->
+          <li class="has-submenu">
+            <a href="#">📊 Thống kê ▾</a>
+            <ul class="submenu">
+              <li><a href="{{ route('admin.analytics') }}">📈 Phân tích doanh thu</a></li>
+              {{-- Bạn có thể thêm các mục thống kê khác ở đây nếu muốn --}}
+              {{-- <li><a href="#">📅 Thống kê theo tháng</a></li> --}}
+              <li><a href="{{ route('admin.analytics.products') }}">📊 Phân tích sản phẩm</a></li>
+            </ul>
+          </li>
         </ul>
       </div>
     </aside>
+
 
     <!-- Content -->
     <main class="content">
@@ -72,6 +121,21 @@
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Toggle submenu khi click
+    document.querySelectorAll('.has-submenu > a').forEach(function(parentLink) {
+      parentLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        let submenu = this.nextElementSibling;
+        if (submenu.style.display === "block") {
+          submenu.style.display = "none";
+        } else {
+          submenu.style.display = "block";
+        }
+      });
+    });
+  </script>
 
   {{-- JS riêng cho từng view con --}}
   @stack('scripts')

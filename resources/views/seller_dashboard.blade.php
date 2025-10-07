@@ -360,15 +360,6 @@
                     </div>
                 </div>
                 <div style="margin-bottom:12px;">
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Trạng thái</label>
-                    <select name="status" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;">
-                        <option value="in_stock">Còn hàng</option>
-                        <option value="out_of_stock">Hết hàng</option>
-                        <option value="discontinued">Ngừng kinh doanh</option>
-                        <option value="pending" selected>Chờ duyệt</option>
-                    </select>
-                </div>
-                <div style="margin-bottom:12px;">
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Hình ảnh (có thể chọn nhiều)</label>
                     <input type="file" name="images[]" accept="image/*" multiple>
                 </div>
@@ -523,7 +514,6 @@
                         <span class="view-text">{{ $shop->status ?? '—' }}</span>
                         <select class="edit-input" name="status">
                             <option value="active" {{ ($shop && $shop->status=='active') ? 'selected' : '' }}>Hoạt động</option>
-                            <option value="suspended" {{ ($shop && $shop->status=='suspended') ? 'selected' : '' }}>Tạm ngưng</option>
                             <option value="closed" {{ ($shop && $shop->status=='closed') ? 'selected' : '' }}>Đóng cửa</option>
                         </select>
                     </div>
