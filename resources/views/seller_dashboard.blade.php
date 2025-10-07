@@ -99,6 +99,14 @@
                 </ul>
             </div>
             <div class="side-section" style="margin-top:16px;">
+                <div class="side-title">Quản Lý Voucher</div>
+                <ul class="menu">
+                    <li><a href="#" data-view="vouchers">Tất cả voucher</a></li>
+                    <li><a href="#" data-view="voucher_add">Thêm voucher</a></li>
+                </ul>
+            </div>
+
+            <div class="side-section" style="margin-top:16px;">
                 <div class="side-title">Tài Khoản</div>
                 <ul class="menu">
                     <li><a href="#" data-view="account_personal">Thông tin tài khoản</a></li>
@@ -536,6 +544,72 @@
             </form>
         </div>
     </template>
+    <template id="tpl-vouchers">
+<?php
+    $shop = \App\Models\Shop::where('user_id', auth()->id())->first();
+    $vouchers = $shop ? \App\Models\Voucher::where('shop_id', $shop->user_id)->latest()->get() : collect();
+?>
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2>🎟️ Quản lý Voucher</h2>
+        <a href="#" onclick="event.preventDefault(); navigate('voucher_add')" class="btn primary">+ Thêm Voucher</a>
+    </div>
+    <table style="width:100%; border-collapse:separate; border-spacing:0 8px;">
+        <thead>
+            <tr style="background:#f3f4f6;">
+                <th style="padding:12px;">Mã</th>
+                <th style="padding:12px;">Giảm giá</th>
+                <th style="padding:12px;">Hết hạn</th>
+                <th style="padding:12px;">Trạng thái</th>
+                <th style="padding:12px;">Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($vouchers as $v)
+            <tr data-id="{{ $v->id }}" style="background:#fff; border:1px solid #e5e7eb;">
+                <td style="padding:12px;">{{ $v->code }}</td>
+                <td style="padding:12px;"><input type="number" value="{{ $v->discount_amount }}" style="width:100px; text-align:center;"></td>
+                <td style="padding:12px;"><input type="date" value="{{ $v->expiry_date->format('Y-m-d') }}"></td>
+                <td style="padding:12px;">
+                    <select>
+                        <option value="active" {{ $v->status=='active'?'selected':'' }}>Hoạt động</option>
+                        <option value="expired" {{ $v->status=='expired'?'selected':'' }}>Hết hạn</option>
+                    </select>
+                </td>
+                <td style="padding:12px;">
+                    <button class="btn green btn-save">Lưu</button>
+                    <button class="btn red btn-delete">Xóa</button>
+                </td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+</template>
+<template id="tpl-voucher-add">
+<div class="card">
+    <h2 style="margin-bottom:12px;">➕ Thêm Voucher Mới</h2>
+    <form id="voucherAddForm">
+        @csrf
+        <div style="margin-bottom:12px;">
+            <label>Mã voucher</label>
+            <input type="text" name="code" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px;" required>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label>Số tiền giảm (VNĐ)</label>
+            <input type="number" name="discount_amount" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px;" required>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label>Ngày hết hạn</label>
+            <input type="date" name="expiry_date" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px;" required>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button type="submit" class="btn green">Lưu</button>
+            <a href="#" onclick="event.preventDefault(); navigate('vouchers')" class="btn">Quay lại</a>
+        </div>
+    </form>
+</div>
+</template>
 
     <script>
 (function(){
@@ -564,6 +638,9 @@
             'products_all': 'tpl-products-all',
             'product_add': 'tpl-product-add',
             'account_personal': 'tpl-account-personal',
+            'vouchers': 'tpl-vouchers',
+            'voucher_add': 'tpl-voucher-add',
+
         };
         show(map[view] || 'tpl-orders-all');
 
@@ -573,6 +650,8 @@
             if (view === 'account_personal') bindAccountPersonal();
             if (view === 'account_personal') bindAccountShop();
             if (view === 'orders_all') bindOrders();
+            if (view === 'vouchers') bindVouchers();
+            if (view === 'voucher_add') bindVoucherAdd();
         }, 0);
     }
 
@@ -582,14 +661,21 @@
     }
 
     (function init(){
-        console.log('Initializing dashboard...');
-        const redirect = getParameterByName('redirect');
-        if (redirect === 'account_personal') {
-            navigate('account_personal');
-        } else {
-            navigate('orders_all');
-        }
-    })();
+    console.log('Initializing dashboard...');
+    const path = window.location.pathname;
+
+    if (path.includes('/seller/vouchers')) {
+        navigate('vouchers');
+    } else if (path.includes('/seller/vouchers/create')) {
+        navigate('voucher_add');
+    } else if (path.includes('/seller/dashboard')) {
+        navigate('orders_all');
+    } else {
+        // Mặc định
+        navigate('orders_all');
+    }
+})();
+
 
     document.querySelectorAll('.sidebar a[data-view]').forEach(function(a){
         a.addEventListener('click', function(e){ 
@@ -1091,6 +1177,184 @@
         renderOrders('pending');
     }
     window.navigate = navigate;
+    function bindVouchers() {
+    // ✅ Lấy tbody thực trong DOM
+    const tbody = document.querySelector('#mainContent tbody');
+    if (!tbody) {
+        console.warn('Không tìm thấy tbody trong giao diện voucher');
+        return;
+    }
+
+    fetch('/seller/vouchers/json')
+        .then(res => {
+            if (!res.ok) throw new Error('Server trả lỗi ' + res.status);
+            return res.json();
+        })
+        .then(vouchers => {
+            tbody.innerHTML = '';
+
+            if (!vouchers.length) {
+                tbody.innerHTML = `
+                    <tr><td colspan="5" style="text-align:center;padding:20px;color:#888;">
+                        ⚠️ Chưa có voucher nào.
+                    </td></tr>`;
+                return;
+            }
+
+            vouchers.forEach(v => {
+                const row = document.createElement('tr');
+                row.dataset.id = v.id;
+
+                // Chuẩn hoá ngày từ "2025-11-15T00:00:00Z" -> "2025-11-15"
+                const expiry = (v.expiry_date || '').toString().split('T')[0] || '';
+
+                row.innerHTML = `
+                    <td style="padding:12px;">${v.code}</td>
+                    <td style="padding:12px;">
+                        <input type="number" value="${v.discount_amount}" style="width:100px;text-align:center;" disabled>
+                    </td>
+                    <td style="padding:12px;">
+                        <input type="date" value="${expiry}" disabled>
+                    </td>
+                    <td style="padding:12px;">
+                        <select disabled>
+                            <option value="active" ${v.status === 'active' ? 'selected' : ''}>Hoạt động</option>
+                            <option value="expired" ${v.status === 'expired' ? 'selected' : ''}>Hết hạn</option>
+                        </select>
+                    </td>
+                    <td style="padding:12px;">
+                        <button class="btn orange btn-edit-voucher">Sửa</button>
+                        <button class="btn red btn-delete">Xóa</button>
+                    </td>`;
+                tbody.appendChild(row);
+            });
+
+            // 🔴 XÓA
+            tbody.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const row = btn.closest('tr');
+                    const id = row.dataset.id;
+                    if (!confirm('⚠️ Bạn có chắc muốn xóa voucher này không?')) return;
+
+                    try {
+                        const res = await fetch(`/seller/vouchers/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            alert('🗑️ Đã xóa voucher thành công!');
+                            bindVouchers(); // reload
+                        } else {
+                            alert('❌ ' + (data.message || 'Không thể xóa voucher!'));
+                        }
+                    } catch (err) {
+                        console.error('Lỗi khi xóa voucher:', err);
+                        alert('⚠️ Lỗi kết nối server!');
+                    }
+                });
+            });
+
+            // 🟠 SỬA / 💾 LƯU
+            tbody.querySelectorAll('.btn-edit-voucher').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const row = btn.closest('tr');
+                    const inputs = row.querySelectorAll('input, select');
+                    const id = row.dataset.id;
+
+                    if (btn.textContent === 'Sửa') {
+                        // 🔓 Cho phép chỉnh
+                        inputs.forEach(i => i.disabled = false);
+                        btn.textContent = 'Lưu';
+                        btn.classList.remove('orange');
+                        btn.classList.add('green');
+                        return;
+                    }
+
+                    // 💾 Lưu
+                    const discount = row.querySelector('input[type="number"]').value.trim();
+                    const expiry   = row.querySelector('input[type="date"]').value; // yyyy-mm-dd
+                    const status   = row.querySelector('select').value;
+
+                    try {
+                        const res = await fetch(`/seller/vouchers/${id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                discount_amount: discount,
+                                expiry_date: expiry,
+                                status: status
+                            })
+                        });
+
+                        const data = await res.json();
+                        if (data.success) {
+                            alert('✅ Cập nhật voucher thành công!');
+                            inputs.forEach(i => i.disabled = true);
+                            btn.textContent = 'Sửa';
+                            btn.classList.remove('green');
+                            btn.classList.add('orange');
+                        } else {
+                            alert('❌ ' + (data.message || 'Không thể cập nhật voucher!'));
+                        }
+                    } catch (err) {
+                        console.error('Lỗi khi cập nhật voucher:', err);
+                        alert('⚠️ Lỗi kết nối server!');
+                    }
+                });
+            });
+        })
+        .catch(err => {
+            console.error('Lỗi khi tải voucher:', err);
+            alert('⚠️ Không thể tải danh sách voucher.');
+        });
+}
+
+
+
+
+
+function bindVoucherAdd() {
+    const form = document.getElementById('voucherAddForm');
+    if (!form) return;
+
+    form.onsubmit = async e => {
+        e.preventDefault();
+        const data = new FormData(form);
+
+        try {
+            const res = await fetch('/seller/vouchers', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: data
+            });
+
+            if (!res.ok) throw new Error(`Server trả lỗi ${res.status}`);
+            const d = await res.json();
+
+            if (d.success) {
+                alert('✅ Thêm voucher thành công!');
+                window.location.href = '/seller/vouchers';
+            } else {
+                alert('❌ Có lỗi xảy ra khi thêm voucher!');
+            }
+
+        } catch (err) {
+            console.error('❌ Lỗi khi thêm voucher:', err);
+            alert('⚠️ Lỗi kết nối đến server hoặc phản hồi không hợp lệ!');
+        }
+    };
+}
+
+
 })();
 </script>
 </body>

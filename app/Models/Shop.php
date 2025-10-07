@@ -33,6 +33,11 @@ class Shop extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+    public function vouchers()
+    {
+        return $this->hasMany(Voucher::class, 'shop_id', 'user_id');
+    }
+
 }
 
 
