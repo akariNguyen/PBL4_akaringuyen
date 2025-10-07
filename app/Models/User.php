@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -13,7 +12,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * Các field cho phép gán hàng loạt
      *
      * @var list<string>
      */
@@ -29,7 +28,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Các field ẩn khi trả về JSON
      *
      * @var list<string>
      */
@@ -39,7 +38,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Kiểu dữ liệu cần cast
      *
      * @return array<string, string>
      */
@@ -47,41 +46,61 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'role' => 'string',
-            'status' => 'string',
+            'password'          => 'hashed',
+            'role'              => 'string',
+            'status'            => 'string',
         ];
     }
-    public function reviews() {
-    return $this->hasMany(Review::class);
+
+    /**
+     * Quan hệ: User có nhiều Review
+     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
     }
 
-
+    /**
+     * Quan hệ: User có nhiều Address
+     */
     public function addresses()
     {
         return $this->hasMany(Address::class);
     }
 
+    /**
+     * Quan hệ: User có 1 Address mặc định
+     */
     public function defaultAddress()
     {
         return $this->hasOne(Address::class)->where('is_default', true);
     }
+
+    /**
+     * Quan hệ: User có 1 Shop
+     */
     public function shop()
-{
-    return $this->hasOne(\App\Models\Shop::class, 'user_id');
-}
+    {
+        return $this->hasOne(Shop::class, 'user_id');
+    }
+
+    /**
+     * Quan hệ: User có 1 Cart
+     */
     public function cart()
     {
         return $this->hasOne(Cart::class);
     }
 
-    // Khi tạo user thì tạo luôn cart
+    /**
+     * Khi tạo user → tự động tạo Cart (nếu là customer)
+     */
     protected static function booted()
     {
         static::created(function ($user) {
-        if ($user->role === 'customer') { // ✅ chỉ tạo giỏ hàng cho khách
-            $user->cart()->create();
-        }
+            if ($user->role === 'customer') {
+                $user->cart()->create();
+            }
         });
     }
 }
