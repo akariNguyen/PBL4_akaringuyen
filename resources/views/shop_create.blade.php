@@ -57,14 +57,6 @@
                 <label for="description">Mô tả shop</label>
                 <textarea id="description" name="description" rows="4">{{ old('description') }}</textarea>
             </div>
-            <div class="field">
-                <label for="status">Trạng thái shop</label>
-                <select id="status" name="status" required>
-                    <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
-                    <option value="suspended" {{ old('status') == 'suspended' ? 'selected' : '' }}>Suspended</option>
-                    <option value="closed" {{ old('status') == 'closed' ? 'selected' : '' }}>Closed</option>
-                </select>
-            </div>
             <div class="actions">
                 <button type="submit" class="btn primary">Tạo shop</button>
                 <a class="btn" href="{{ route('seller.dashboard') }}" style="text-decoration:none; color:#111827;">Hủy</a>

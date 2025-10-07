@@ -13,7 +13,8 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminShopController;
-
+use App\Http\Controllers\Admin\AdminAnalyticsController;
+use App\Http\Controllers\Admin\AdminProductAnalyticsController;
 // Trang chủ
 Route::get('/', function () {
     return view('home', ['mode' => 'welcome']);
@@ -94,17 +95,42 @@ Route::middleware('auth')->group(function () {
 
 // Phần mới - THAY THẾ
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    // 📊 Dashboard chính
     Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
-    Route::resource('users', AdminUserController::class);
-    Route::resource('products', AdminProductController::class);
-    Route::resource('orders', AdminOrderController::class);
-    Route::resource('shops', AdminShopController::class);
 
-    // Toggle status user
+    // 👥 Quản lý người dùng
+    Route::resource('users', AdminUserController::class);
     Route::patch('users/{id}/toggle-status', [AdminUserController::class, 'toggleStatus'])
         ->name('users.toggleStatus');
+    
+    // 🏬 Quản lý shop
+    Route::get('shops/pending', [AdminShopController::class, 'pending'])->name('shops.pending');
+    Route::patch('shops/{id}/approve', [AdminShopController::class, 'approve'])->name('shops.approve');
+    Route::patch('shops/{id}/reject', [AdminShopController::class, 'reject'])->name('shops.reject');
+    Route::patch('shops/{id}/toggle-status', [AdminShopController::class, 'toggleStatus'])->name('shops.toggleStatus');
+    Route::get('shops/{id}/detail', [AdminShopController::class, 'showDetail'])->name('shops.detail');
+    Route::resource('shops', AdminShopController::class);
 
-    // Toggle status shop
-    Route::patch('shops/{id}/toggle-status', [AdminShopController::class, 'toggleStatus'])
-        ->name('shops.toggleStatus');
+    // 📦 Quản lý sản phẩm
+    Route::get('products/in-stock', [AdminProductController::class, 'inStock'])->name('products.inStock');
+    Route::get('products/pending', [AdminProductController::class, 'pending'])->name('products.pending');
+    Route::patch('products/{id}/approve', [AdminProductController::class, 'approve'])->name('products.approve');
+    Route::patch('products/{id}/reject', [AdminProductController::class, 'reject'])->name('products.reject');
+    Route::resource('products', AdminProductController::class);
+
+    // 🧾 Quản lý đơn hàng
+    Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/{id}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::post('orders/{id}/update-status', [AdminOrderController::class, 'updateStatus'])->name('orders.updateStatus');
+
+    // 📈 Phân tích doanh thu
+    Route::get('analytics', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'index'])
+        ->name('analytics');
+    Route::get('analytics/weeks', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'getWeeks'])
+        ->name('analytics.weeks');
+
+    // 🧮 Phân tích sản phẩm
+    Route::get('analytics/products', [\App\Http\Controllers\Admin\AdminProductAnalyticsController::class, 'index'])
+        ->name('analytics.products');
 });
+
