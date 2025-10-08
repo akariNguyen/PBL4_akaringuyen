@@ -149,5 +149,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         ->name('analytics.products');
 });
 
+Route::middleware(['auth', 'role:seller'])->group(function () {
+    Route::get('/shop/rejected', [ShopController::class, 'showRejected'])->name('seller.shop.rejected');  // ✅ Path: /shop/rejected
+    Route::post('/shop/resubmit', [ShopController::class, 'resubmit'])->name('seller.shop.resubmit');    // ✅ Path: /shop/resubmit
+});
 
 

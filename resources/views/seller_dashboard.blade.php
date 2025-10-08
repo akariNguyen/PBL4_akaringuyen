@@ -61,6 +61,7 @@
         .save-bar { display:none; justify-content:flex-start; gap:8px; margin-top:8px; }
         .editing .save-bar { display:flex; }
         .success-message { background:#ecfdf5; color:#047857; padding:10px 12px; border:1px solid #a7f3d0; border-radius:8px; margin-bottom:12px; }
+        .suspended-alert { background:#fee2e2; color:#dc2626; padding:16px; border:1px solid #fecaca; border-radius:8px; margin-bottom:16px; }
         table { width:100%; border-collapse:separate; border-spacing:0 8px; }
         th, td { padding:12px; text-align:left; }
         th { background:#f3f4f6; font-weight:600; }
@@ -70,6 +71,9 @@
     </style>
 </head>
 <body>
+@php
+    $shop = \App\Models\Shop::where('user_id', auth()->id())->first();
+@endphp
     <div class="topbar">
         <div class="left">
             <div class="brand">
@@ -78,7 +82,6 @@
             </div>
         </div>
     </div>
-
     <div class="layout">
         <aside class="sidebar">
             <div class="side-section">
@@ -105,7 +108,6 @@
                     <li><a href="#" data-view="voucher_add">Thêm voucher</a></li>
                 </ul>
             </div>
-
             <div class="side-section" style="margin-top:16px;">
                 <div class="side-title">Tài Khoản</div>
                 <ul class="menu">
@@ -122,6 +124,12 @@
             </div>
         </aside>
         <main class="content" id="mainContent">
+            @if($shop && $shop->status === 'suspended')
+            <div class="suspended-alert">
+                <h3 style="margin:0 0 8px 0; font-weight:600;">Shop đã bị đình chỉ</h3>
+                <p style="margin:0; font-size:14px;">Shop của bạn đã bị đình chỉ hoạt động. Vui lòng liên hệ với bộ phận hỗ trợ để được giải quyết. Các chức năng quản lý có thể bị hạn chế.</p>
+            </div>
+            @endif
             <div class="card" style="margin-bottom:16px;">
                 <h2 style="margin:0 0 8px 0;">Danh sách cần làm</h2>
                 <div class="grid">
@@ -131,7 +139,6 @@
                     <div class="metric"><h3>Sản Phẩm Bị Tạm Khóa</h3><div class="val">0</div></div>
                 </div>
             </div>
-
             <div class="card">
                 <h2 style="margin:0 0 8px 0;">Phân Tích Bán Hàng</h2>
                 <div class="grid">
@@ -143,24 +150,22 @@
             </div>
         </main>
     </div>
-
     <!-- Hidden templates for center content -->
     <template id="tpl-orders-all">
         <?php
             use App\Models\Order;
             use App\Models\OrderItem;
-
             $sellerId = auth()->id();
             $orders = Order::whereHas('items', function($q) use ($sellerId) {
                 $q->where('seller_id', $sellerId);
             })->with(['items' => function($q) use ($sellerId) {
                 $q->where('seller_id', $sellerId);
             }, 'user'])->latest()->get();
-
             $completedCount = $orders->where('status', 'completed')->count();
             $undeliveredCount = $orders->whereIn('status', ['pending', 'shipped'])->count();
             $cancelledCount = $orders->where('status', 'cancelled')->count();
         ?>
+        
         <div class="card" style="margin-bottom:16px;">
             <h2 style="margin:0 0 8px 0;">Thống kê đơn hàng</h2>
             <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
@@ -178,7 +183,6 @@
                 </div>
             </div>
         </div>
-
         <div class="card">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
                 <h2 style="margin:0;">Quản lý tất cả đơn hàng</h2>
@@ -188,142 +192,142 @@
                     <button id="btnFilter" class="btn primary">Lọc</button>
                 </div>
             </div>
-
             <div class="tabs">
                 <button class="tab active" data-tab="pending">Chờ xử lý</button>
                 <button class="tab" data-tab="shipped">Đang giao</button>
                 <button class="tab" data-tab="completed">Hoàn thành</button>
                 <button class="tab" data-tab="cancelled">Đã hủy</button>
             </div>
-
             <div id="ordersList">
                 <!-- Danh sách đơn hàng sẽ được render động bằng JS -->
             </div>
         </div>
-
         <!-- Dữ liệu orders JSON để JS xử lý -->
         <script>
             const allOrders = @json($orders);
         </script>
     </template>
-
-    <template id="tpl-products-all">
-    <?php
-        $sellerProducts = \App\Models\Product::where('seller_id', auth()->id())
-            ->with('category')
-            ->latest()
-            ->get();
-    ?>
-    <div class="card" style="margin-bottom:16px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-            <h2 style="margin:0;">Quản lý tất cả sản phẩm</h2>
-            <div style="display:flex; gap:8px;">
-                <input id="productsSearch" type="text" placeholder="Tìm kiếm theo tên..." 
-                       style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; width:260px;">
-                <a href="#" onclick="event.preventDefault(); navigate('product_add')" 
-                   style="text-decoration:none; padding:10px 14px; border-radius:8px; background:#2563eb; border:1px solid #2563eb; color:#fff; display:flex; align-items:center;">
-                   + Thêm sản phẩm
-                </a>
+        <template id="tpl-products-all">
+        <?php
+            $sellerProducts = \App\Models\Product::where('seller_id', auth()->id())
+                ->with('category')
+                ->latest()
+                ->get();
+        ?>
+        @if($shop && $shop->status === 'suspended')
+        <div class="suspended-alert">
+            <h3 style="margin:0 0 8px 0; font-weight:600;">Shop đã bị đình chỉ</h3>
+            <p style="margin:0; font-size:14px;">Shop của bạn đã bị đình chỉ hoạt động. Vui lòng liên hệ với bộ phận hỗ trợ để được giải quyết. Các chức năng quản lý có thể bị hạn chế.</p>
+        </div>
+        @endif
+        <div class="card" style="margin-bottom:16px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <h2 style="margin:0;">Quản lý tất cả sản phẩm</h2>
+                <div style="display:flex; gap:8px;">
+                    <input id="productsSearch" type="text" placeholder="Tìm kiếm theo tên..."
+                        style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; width:260px;">
+                    <a href="#" onclick="event.preventDefault(); navigate('product_add')"
+                    style="text-decoration:none; padding:10px 14px; border-radius:8px; background:#2563eb; border:1px solid #2563eb; color:#fff; display:flex; align-items:center;">
+                    + Thêm sản phẩm
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
-    <style>
-        #productsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
-        .view-text { display:inline; }
-        .edit-input { display:none; }
-        .save-bar { display:none; }
-        .product-card.editing .view-text { display:none; }
-        .product-card.editing .edit-input { display:inline-block; }
-        .product-card.editing .save-bar { display:flex; gap:8px; margin-top:8px; }
-    </style>
-
-    <div class="grid" id="productsGrid">
-        @foreach($sellerProducts as $p)
-            <?php
-                $imgs = is_array($p->images) ? $p->images : [];
-                $img = count($imgs) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
-                $statusColor = match($p->status){ 
-                    'in_stock' => '#16a34a', 
-                    'out_of_stock' => '#dc2626', 
-                    'discontinued' => '#6b7280', 
-                    default => '#f59e0b', 
-                };
-                $statusText = match($p->status){ 
-                    'in_stock' => 'Còn hàng', 
-                    'out_of_stock' => 'Hết hàng', 
-                    'discontinued' => 'Ngừng kinh doanh', 
-                    default => 'Chờ duyệt', 
-                };
-            ?>
-            <form method="post" action="{{ route('products.update', $p->id) }}" 
-                  class="card product-card" style="width:100%;">
-                @csrf
-                @method('PUT')
-
-                <div style="display:flex; align-items:flex-start; gap:20px; padding:20px;">
-                    <img src="{{ $img }}" alt="{{ $p->name }}" 
-                         style="width:150px; height:150px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb;">
-                    
-                    <div style="flex:1;">
-                        <!-- Tên + Trạng thái -->
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                            <h3 style="margin:0; font-size:20px; font-weight:600;">
-                                <span class="view-text">{{ $p->name }}</span>
-                                <input class="edit-input" type="text" name="name" value="{{ $p->name }}">
-                            </h3>
-                            <span style="font-size:14px; padding:6px 12px; border-radius:999px; background:{{ $statusColor }}20; color:{{ $statusColor }}; border:1px solid {{ $statusColor }}33;">
-                                {{ $statusText }}
-                            </span>
-                        </div>
-
-                        <!-- Đã bán + Tồn kho -->
-                        <div style="display:flex; gap:16px; margin-bottom:16px;">
-                            <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
-                                <div style="font-weight:700; font-size:18px;">{{ $p->sold_quantity }}</div>
-                                <div style="font-size:14px; color:#6b7280;">Đã bán</div>
+        <style>
+            #productsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
+            .view-text { display:inline; }
+            .edit-input { display:none; }
+            .save-bar { display:none; }
+            .product-card.editing .view-text { display:none; }
+            .product-card.editing .edit-input { display:inline-block; }
+            .product-card.editing .save-bar { display:flex; gap:8px; margin-top:8px; }
+        </style>
+        <div class="grid" id="productsGrid">
+            @foreach($sellerProducts as $p)
+                <?php
+                    $imgs = is_array($p->images) ? $p->images : [];
+                    $img = count($imgs) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
+                    $statusColor = match($p->status){
+                        'in_stock' => '#16a34a',
+                        'out_of_stock' => '#dc2626',
+                        'discontinued' => '#6b7280',
+                        default => '#f59e0b',
+                    };
+                    $statusText = match($p->status){
+                        'in_stock' => 'Còn hàng',
+                        'out_of_stock' => 'Hết hàng',
+                        'discontinued' => 'Ngừng kinh doanh',
+                        default => 'Chờ duyệt',
+                    };
+                ?>
+                <form method="post" action="{{ route('products.update', $p->id) }}" class="product-form"
+                    class="card product-card" style="width:100%;">
+                    @csrf
+                    @method('PUT')
+                    <div style="display:flex; align-items:flex-start; gap:20px; padding:20px;">
+                        <img src="{{ $img }}" alt="{{ $p->name }}"
+                            style="width:150px; height:150px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb;">
+                       
+                        <div style="flex:1;">
+                            <!-- Tên + Trạng thái -->
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                                <h3 style="margin:0; font-size:20px; font-weight:600;">
+                                    <span class="view-text">{{ $p->name }}</span>
+                                    <input class="edit-input" type="text" name="name" value="{{ $p->name }}">
+                                </h3>
+                                <span style="font-size:14px; padding:6px 12px; border-radius:999px; background:{{ $statusColor }}20; color:{{ $statusColor }}; border:1px solid {{ $statusColor }}33;">
+                                    {{ $statusText }}
+                                </span>
                             </div>
-                            <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
-                                <div class="view-text" style="font-weight:700; font-size:18px;">{{ $p->quantity }}</div>
-                                <input class="edit-input" type="number" name="quantity" value="{{ $p->quantity }}">
-                                <div style="font-size:14px; color:#6b7280;">Tồn kho</div>
+                            <!-- Đã bán + Tồn kho -->
+                            <div style="display:flex; gap:16px; margin-bottom:16px;">
+                                <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
+                                    <div style="font-weight:700; font-size:18px;">{{ $p->sold_quantity }}</div>
+                                    <div style="font-size:14px; color:#6b7280;">Đã bán</div>
+                                </div>
+                                <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
+                                    <div class="view-text" style="font-weight:700; font-size:18px;">{{ $p->quantity }}</div>
+                                    <input class="edit-input" type="number" name="quantity" value="{{ $p->quantity }}">
+                                    <div style="font-size:14px; color:#6b7280;">Tồn kho</div>
+                                </div>
                             </div>
-                        </div>
-
-                        <!-- Giá -->
-                        <div style="margin-bottom:16px; font-weight:800; color:#16a34a;">
-                            <span class="view-text">{{ number_format($p->price, 0, ',', '.') }} VND</span>
-                            <input class="edit-input" type="number" name="price" value="{{ $p->price }}">
-                        </div>
-
-                        <!-- Loại -->
-                        <div style="margin-bottom:16px; font-size:14px; color:#6b7280;">
-                            Loại sản phẩm:
-                            <span class="view-text" style="color:#111827; font-weight:600;">{{ $p->category?->name ?? '—' }}</span>
-                            <input class="edit-input" type="text" name="category" value="{{ $p->category?->name ?? '' }}">
-                        </div>
-
-                        <!-- Buttons -->
-                        <div style="display:flex; justify-content:flex-end; gap:12px;">
-                            <button type="button" class="btn red">Xóa</button>
-                            <button type="button" class="btn green btn-edit">Chỉnh sửa</button>
-                            <div class="save-bar">
-                                <button type="submit" class="btn primary">Lưu</button>
-                                <button type="button" class="btn btn-cancel">Hủy</button>
+                            <!-- Giá -->
+                            <div style="margin-bottom:16px; font-weight:800; color:#16a34a;">
+                                <span class="view-text">{{ number_format($p->price, 0, ',', '.') }} VND</span>
+                                <input class="edit-input" type="number" name="price" value="{{ $p->price }}">
+                            </div>
+                            <!-- Loại -->
+                            <div style="margin-bottom:16px; font-size:14px; color:#6b7280;">
+                                Loại sản phẩm:
+                                <span class="view-text" style="color:#111827; font-weight:600;">{{ $p->category?->name ?? '—' }}</span>
+                                <input class="edit-input" type="text" name="category" value="{{ $p->category?->name ?? '' }}">
+                            </div>
+                            <!-- Buttons -->
+                            <div style="display:flex; justify-content:flex-end; gap:12px;">
+                                <button type="button" class="btn red">Xóa</button>
+                                <button type="button" class="btn green btn-edit">Chỉnh sửa</button>
+                                <div class="save-bar">
+                                    <button type="submit" class="btn primary">Lưu</button>
+                                    <button type="button" class="btn btn-cancel">Hủy</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </form>
-        @endforeach
-    </div>
-</template>
-
-
+                </form>
+            @endforeach
+        </div>
+    </template>
     <template id="tpl-product-add">
+        @if($shop && $shop->status === 'suspended')
+        <div class="suspended-alert">
+            <h3 style="margin:0 0 8px 0; font-weight:600;">Shop đã bị đình chỉ</h3>
+            <p style="margin:0; font-size:14px;">Shop của bạn đã bị đình chỉ hoạt động. Vui lòng liên hệ với bộ phận hỗ trợ để được giải quyết. Các chức năng quản lý có thể bị hạn chế.</p>
+        </div>
+        @endif
         <div class="card">
             <h2 style="margin:0 0 12px 0;">Thêm sản phẩm</h2>
             <p style="margin:0 0 16px 0; color:#6b7280;">Nếu loại sản phẩm chưa có, chọn "Khác" và nhập loại mới.</p>
-            <form method="post" action="{{ route('products.store') }}" enctype="multipart/form-data">
+            <form method="post" action="{{ route('products.store') }}" enctype="multipart/form-data" class="product-form">
                 @csrf
                 <div style="margin-bottom:12px;">
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Tên sản phẩm</label>
@@ -369,8 +373,8 @@
             </form>
         </div>
     </template>
-
     <template id="tpl-account-personal">
+        
         <div class="card">
             @if(session('success'))
                 <div class="success-message">{{ session('success') }}</div>
@@ -442,7 +446,6 @@
                 </form>
                 <p class="hint" style="margin-top:8px;">Bấm biểu tượng ✎ để chỉnh sửa trực tiếp họ tên, số điện thoại và avatar. Chọn ảnh để xem trước, chỉ lưu khi bấm Lưu.</p>
             </div>
-
             <div id="tab-password" class="section" style="display:none;">
                 <form id="formPassword" method="post" action="{{ route('account.password.update') }}">
                     @csrf
@@ -471,7 +474,6 @@
                 </form>
             </div>
         </div>
-
         <div class="card">
             @if(session('success'))
                 <div class="success-message">{{ session('success') }}</div>
@@ -511,13 +513,15 @@
                 <div class="row">
                     <div class="label">Trạng thái</div>
                     <div>
-                        <span class="view-text">{{ $shop->status ?? '—' }}</span>
-                        <select class="edit-input" name="status">
+                        <span class="view-text" id="shop_status">{{ $shop->status ?? '—' }}</span>
+                        <!-- Không cho sửa trạng thái -->
+                        <select class="edit-input" name="status" disabled style="display:none;">
                             <option value="active" {{ ($shop && $shop->status=='active') ? 'selected' : '' }}>Hoạt động</option>
                             <option value="closed" {{ ($shop && $shop->status=='closed') ? 'selected' : '' }}>Đóng cửa</option>
                         </select>
                     </div>
                 </div>
+
                 @if ($errors->any())
                     <div style="background:#fee2e2; color:#dc2626; padding:10px 12px; border:1px solid #fecaca; border-radius:8px; margin-top:8px;">
                         <ul style="margin:0; padding-left:16px;">
@@ -539,6 +543,7 @@
     $shop = \App\Models\Shop::where('user_id', auth()->id())->first();
     $vouchers = $shop ? \App\Models\Voucher::where('shop_id', $shop->user_id)->latest()->get() : collect();
 ?>
+       
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <h2>🎟️ Quản lý Voucher</h2>
@@ -577,6 +582,12 @@
 </div>
 </template>
 <template id="tpl-voucher-add">
+        @if($shop && $shop->status === 'suspended')
+        <div class="suspended-alert">
+            <h3 style="margin:0 0 8px 0; font-weight:600;">Shop đã bị đình chỉ</h3>
+            <p style="margin:0; font-size:14px;">Shop của bạn đã bị đình chỉ hoạt động. Vui lòng liên hệ với bộ phận hỗ trợ để được giải quyết. Các chức năng quản lý có thể bị hạn chế.</p>
+        </div>
+        @endif
 <div class="card">
     <h2 style="margin-bottom:12px;">➕ Thêm Voucher Mới</h2>
     <form id="voucherAddForm">
@@ -600,8 +611,8 @@
     </form>
 </div>
 </template>
-
     <script>
+const shopStatus = @json($shop ? $shop->status : 'active');
 (function(){
     function show(viewId){
         var main = document.getElementById('mainContent');
@@ -617,7 +628,6 @@
             console.error('Template not found:', viewId);
         }
     }
-
     function navigate(view){
         var map = {
             'orders_all': 'tpl-orders-all',
@@ -630,10 +640,8 @@
             'account_personal': 'tpl-account-personal',
             'vouchers': 'tpl-vouchers',
             'voucher_add': 'tpl-voucher-add',
-
         };
         show(map[view] || 'tpl-orders-all');
-
         setTimeout(function(){
             if (view === 'product_add') bindCategory();
             if (view === 'products_all') bindProductsSearch();
@@ -644,16 +652,13 @@
             if (view === 'voucher_add') bindVoucherAdd();
         }, 0);
     }
-
     function getParameterByName(name) {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(name);
     }
-
     (function init(){
     console.log('Initializing dashboard...');
     const path = window.location.pathname;
-
     if (path.includes('/seller/vouchers')) {
         navigate('vouchers');
     } else if (path.includes('/seller/vouchers/create')) {
@@ -665,15 +670,12 @@
         navigate('orders_all');
     }
 })();
-
-
     document.querySelectorAll('.sidebar a[data-view]').forEach(function(a){
-        a.addEventListener('click', function(e){ 
-            e.preventDefault(); 
-            navigate(a.getAttribute('data-view')); 
+        a.addEventListener('click', function(e){
+            e.preventDefault();
+            navigate(a.getAttribute('data-view'));
         });
     });
-
     function bindCategory(){
         var sel = document.getElementById('category_select');
         var otherWrap = document.getElementById('category_other_wrap');
@@ -695,8 +697,18 @@
         sel.addEventListener('change', sync);
         if (other) other.addEventListener('input', sync);
         sync();
+        // Bind submit for add product
+        const addForm = document.querySelector('.product-form[action*="products/store"]');
+        if (addForm) {
+            addForm.addEventListener('submit', function(e) {
+                if (shopStatus === 'suspended') {
+                    e.preventDefault();
+                    alert('Shop đã bị đình chỉ. Không thể thêm sản phẩm mới.');
+                    return false;
+                }
+            });
+        }
     }
-
     function bindProductsSearch(){
         var input = document.getElementById('productsSearch');
         var grid = document.getElementById('productsGrid');
@@ -711,8 +723,18 @@
                 card.style.display = (!q || name.indexOf(q) !== -1) ? '' : 'none';
             });
         });
+        // Bind submit for update products
+        const updateForms = document.querySelectorAll('.product-form');
+        updateForms.forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                if (shopStatus === 'suspended') {
+                    e.preventDefault();
+                    alert('Shop đã bị đình chỉ. Không thể sửa sản phẩm.');
+                    return false;
+                }
+            });
+        });
     }
-
     function bindAccountPersonal(){
         var tabs = document.querySelectorAll('.tab');
         tabs.forEach(function(btn){
@@ -724,14 +746,22 @@
                 document.getElementById('tab-password').style.display = (tab==='password')?'block':'none';
             });
         });
-
         var form = document.getElementById('formInfo');
         if(form){
             var btnEdit = document.getElementById('btnEdit');
             var btnCancel = document.getElementById('btnCancel');
-            if(btnEdit) btnEdit.addEventListener('click', function(){ form.classList.add('editing'); });
-            if(btnCancel) btnCancel.addEventListener('click', function(){ form.classList.remove('editing'); });
+            if (btnEdit) {
+    btnEdit.addEventListener('click', function (e) {
+        if (shopStatus === 'suspended') {
+            e.preventDefault();
+            alert('🚫 Shop đang bị đình chỉ — không thể chỉnh sửa thông tin cá nhân.');
+            return;
+        }
+        form.classList.add('editing');
+    });
+}
 
+            if(btnCancel) btnCancel.addEventListener('click', function(){ form.classList.remove('editing'); });
             var avatarInput = document.getElementById('avatar_input');
             var avatarImg = document.getElementById('avatar_img');
             if(avatarInput && avatarImg){
@@ -743,7 +773,6 @@
                     }
                 });
             }
-
             form.addEventListener('submit', function(e){
                 e.preventDefault();
                 var formData = new FormData(form);
@@ -775,7 +804,6 @@
                 });
             });
         }
-
         var formPassword = document.getElementById('formPassword');
         if (formPassword) {
             formPassword.addEventListener('submit', function(e){
@@ -807,7 +835,6 @@
             });
         }
     }
-
     function bindAccountShop(){
         var form = document.getElementById('formShop');
         if(!form) {
@@ -816,9 +843,17 @@
         }
         var btnEdit = document.getElementById('btnEditShop');
         var btnCancel = document.getElementById('btnCancelShop');
-        if(btnEdit) btnEdit.addEventListener('click', function(){ form.classList.add('editing'); });
+      if (btnEdit) {
+    btnEdit.addEventListener('click', function (e) {
+        if (shopStatus === 'suspended') {
+            e.preventDefault();
+            alert('🚫 Shop của bạn đang bị đình chỉ — không thể chỉnh sửa thông tin.');
+            return;
+        }
+        form.classList.add('editing');
+    });
+}
         if(btnCancel) btnCancel.addEventListener('click', function(){ form.classList.remove('editing'); });
-
         var logoInput = document.getElementById('logo_input');
         var logoImg = document.getElementById('logo_img');
         if(logoInput && logoImg){
@@ -830,7 +865,6 @@
                 }
             });
         }
-
         form.addEventListener('submit', function(e){
             e.preventDefault();
             var formData = new FormData(form);
@@ -862,7 +896,6 @@
             });
         });
     }
-
     function renderOrders(status, fromDate = null, toDate = null) {
         console.log('Rendering orders for status:', status, 'from:', fromDate, 'to:', toDate);
         const list = document.getElementById('ordersList');
@@ -872,13 +905,11 @@
             return;
         }
         list.innerHTML = '';
-
         console.log('Available orders:', allOrders); // Debug
         let startDate = fromDate ? new Date(fromDate) : null;
         let endDate = toDate ? new Date(toDate) : null;
         if (startDate) startDate.setHours(0, 0, 0, 0);
         if (endDate) endDate.setHours(23, 59, 59, 999);
-
         const filteredOrders = allOrders.filter(order => {
             if (!order) {
                 console.warn('Invalid order:', order);
@@ -890,18 +921,15 @@
             if (endDate && orderDate > endDate) return false;
             return true;
         });
-
         console.log('Filtered orders:', filteredOrders); // Debug
         if (filteredOrders.length === 0) {
             list.innerHTML = '<p style="color:#6b7280; margin:0;">Chưa có đơn hàng phù hợp.</p>';
             return;
         }
-
         const table = document.createElement('table');
         table.style.width = '100%';
         table.style.borderCollapse = 'separate';
         table.style.borderSpacing = '0 8px';
-
         const thead = document.createElement('thead');
         thead.innerHTML = `
             <tr style="background:#f3f4f6; text-align:left;">
@@ -915,7 +943,6 @@
             </tr>
         `;
         table.appendChild(thead);
-
         const tbody = document.createElement('tbody');
         filteredOrders.forEach(order => {
             if (!order.id) {
@@ -926,7 +953,6 @@
             row.style.background = '#fff';
             row.style.border = '1px solid #e5e7eb';
             row.style.borderRadius = '8px';
-
             let itemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
                 order.items.forEach(item => {
@@ -936,7 +962,6 @@
                 console.warn('No items for order:', order.id);
                 itemsHtml = '<div>—</div>';
             }
-
             let actionHtml = '';
             let statusText = '';
             let statusColor = '#e5e7eb';
@@ -973,7 +998,6 @@
                     console.warn('Unknown order status:', order.status);
                     statusText = 'Không xác định';
             }
-
             row.innerHTML = `
                 <td style="padding:12px;">#${order.id}</td>
                 <td style="padding:12px;">${order.user?.name || '—'}</td>
@@ -988,11 +1012,9 @@
         table.appendChild(tbody);
         list.appendChild(table);
     }
-
     function numberFormat(num) {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
-
     function updateOrderStatus(orderId, button) {
         console.log('Clicked Xử lý đơn hàng for order:', orderId);
         if (!button) {
@@ -1000,17 +1022,14 @@
             alert('Lỗi: Không tìm thấy nút xử lý.');
             return;
         }
-
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         if (!csrfToken) {
             console.error('CSRF token not found');
             alert('Lỗi: Không tìm thấy CSRF token.');
             return;
         }
-
         button.disabled = true;
         button.textContent = 'Đang xử lý...';
-
         console.log('Sending AJAX to update order:', orderId, 'to status: shipped');
         fetch(`/orders/${orderId}/update-status`, {
             method: 'POST',
@@ -1066,7 +1085,6 @@
             button.textContent = 'Xử lý đơn hàng';
         });
     }
-
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('btn-edit')) {
             const card = e.target.closest('.product-card');
@@ -1077,27 +1095,22 @@
             card.classList.remove('editing');
         }
     });
-
     // Expose to global so inline onclick can access
     window.updateOrderStatus = updateOrderStatus;
-
     function markDelivered(orderId, button) {
         console.log('Clicked Giao hàng thành công for order:', orderId);
         if (!button) {
             alert('Lỗi: Không tìm thấy nút.');
             return;
         }
-
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         if (!csrfToken) {
             alert('Lỗi: Thiếu CSRF token');
             return;
         }
-
         button.disabled = true;
         const original = button.textContent;
         button.textContent = 'Đang cập nhật...';
-
         fetch(`/orders/${orderId}/update-status`, {
             method: 'POST',
             headers: {
@@ -1135,13 +1148,10 @@
         });
     }
     window.markDelivered = markDelivered;
-
-
     function bindOrders() {
         console.log('Binding orders tab...');
         const tabs = document.querySelectorAll('.tab[data-tab]');
         let currentStatus = 'pending';
-
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 console.log('Tab clicked:', tab.getAttribute('data-tab'));
@@ -1153,7 +1163,6 @@
                 renderOrders(currentStatus, from, to);
             });
         });
-
         const btnFilter = document.getElementById('btnFilter');
         if (btnFilter) {
             btnFilter.addEventListener('click', () => {
@@ -1163,7 +1172,6 @@
                 renderOrders(currentStatus, from, to);
             });
         }
-
         renderOrders('pending');
     }
     window.navigate = navigate;
@@ -1174,7 +1182,6 @@
         console.warn('Không tìm thấy tbody trong giao diện voucher');
         return;
     }
-
     fetch('/seller/vouchers/json')
         .then(res => {
             if (!res.ok) throw new Error('Server trả lỗi ' + res.status);
@@ -1182,7 +1189,6 @@
         })
         .then(vouchers => {
             tbody.innerHTML = '';
-
             if (!vouchers.length) {
                 tbody.innerHTML = `
                     <tr><td colspan="5" style="text-align:center;padding:20px;color:#888;">
@@ -1190,14 +1196,11 @@
                     </td></tr>`;
                 return;
             }
-
             vouchers.forEach(v => {
                 const row = document.createElement('tr');
                 row.dataset.id = v.id;
-
                 // Chuẩn hoá ngày từ "2025-11-15T00:00:00Z" -> "2025-11-15"
                 const expiry = (v.expiry_date || '').toString().split('T')[0] || '';
-
                 row.innerHTML = `
                     <td style="padding:12px;">${v.code}</td>
                     <td style="padding:12px;">
@@ -1218,106 +1221,110 @@
                     </td>`;
                 tbody.appendChild(row);
             });
-
             // 🔴 XÓA
-            tbody.querySelectorAll('.btn-delete').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const row = btn.closest('tr');
-                    const id = row.dataset.id;
-                    if (!confirm('⚠️ Bạn có chắc muốn xóa voucher này không?')) return;
+            // 🔴 XÓA
+tbody.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        if (shopStatus === 'suspended') {
+            e.preventDefault();
+            alert('🚫 Shop của bạn đang bị đình chỉ — không thể xóa voucher.');
+            return;
+        }
 
-                    try {
-                        const res = await fetch(`/seller/vouchers/${id}`, {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            }
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            alert('🗑️ Đã xóa voucher thành công!');
-                            bindVouchers(); // reload
-                        } else {
-                            alert('❌ ' + (data.message || 'Không thể xóa voucher!'));
-                        }
-                    } catch (err) {
-                        console.error('Lỗi khi xóa voucher:', err);
-                        alert('⚠️ Lỗi kết nối server!');
-                    }
-                });
+        const row = btn.closest('tr');
+        const id = row.dataset.id;
+        if (!confirm('⚠️ Bạn có chắc muốn xóa voucher này không?')) return;
+
+        try {
+            const res = await fetch(`/seller/vouchers/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
             });
+            const data = await res.json();
+            if (data.success) {
+                alert('🗑️ Đã xóa voucher thành công!');
+                bindVouchers(); // reload
+            } else {
+                alert('❌ ' + (data.message || 'Không thể xóa voucher!'));
+            }
+        } catch (err) {
+            console.error('Lỗi khi xóa voucher:', err);
+            alert('⚠️ Lỗi kết nối server!');
+        }
+    });
+});
 
-            // 🟠 SỬA / 💾 LƯU
-            tbody.querySelectorAll('.btn-edit-voucher').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const row = btn.closest('tr');
-                    const inputs = row.querySelectorAll('input, select');
-                    const id = row.dataset.id;
+// 🟠 SỬA / 💾 LƯU
+tbody.querySelectorAll('.btn-edit-voucher').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        if (shopStatus === 'suspended') {
+            e.preventDefault();
+            alert('🚫 Shop của bạn đang bị đình chỉ — không thể chỉnh sửa voucher.');
+            return;
+        }
 
-                    if (btn.textContent === 'Sửa') {
-                        // 🔓 Cho phép chỉnh
-                        inputs.forEach(i => i.disabled = false);
-                        btn.textContent = 'Lưu';
-                        btn.classList.remove('orange');
-                        btn.classList.add('green');
-                        return;
-                    }
+        const row = btn.closest('tr');
+        const inputs = row.querySelectorAll('input, select');
+        const id = row.dataset.id;
 
-                    // 💾 Lưu
-                    const discount = row.querySelector('input[type="number"]').value.trim();
-                    const expiry   = row.querySelector('input[type="date"]').value; // yyyy-mm-dd
-                    const status   = row.querySelector('select').value;
+        if (btn.textContent === 'Sửa') {
+            // 🔓 Cho phép chỉnh sửa
+            inputs.forEach(i => i.disabled = false);
+            btn.textContent = 'Lưu';
+            btn.classList.remove('orange');
+            btn.classList.add('green');
+            return;
+        }
 
-                    try {
-                        const res = await fetch(`/seller/vouchers/${id}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            },
-                            body: JSON.stringify({
-                                discount_amount: discount,
-                                expiry_date: expiry,
-                                status: status
-                            })
-                        });
-
-                        const data = await res.json();
-                        if (data.success) {
-                            alert('✅ Cập nhật voucher thành công!');
-                            inputs.forEach(i => i.disabled = true);
-                            btn.textContent = 'Sửa';
-                            btn.classList.remove('green');
-                            btn.classList.add('orange');
-                        } else {
-                            alert('❌ ' + (data.message || 'Không thể cập nhật voucher!'));
-                        }
-                    } catch (err) {
-                        console.error('Lỗi khi cập nhật voucher:', err);
-                        alert('⚠️ Lỗi kết nối server!');
-                    }
-                });
+        // 💾 Lưu thay đổi
+        const discount = row.querySelector('input[type="number"]').value.trim();
+        const expiry = row.querySelector('input[type="date"]').value;
+        const status = row.querySelector('select').value;
+        try {
+            const res = await fetch(`/seller/vouchers/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    discount_amount: discount,
+                    expiry_date: expiry,
+                    status: status
+                })
             });
+            const data = await res.json();
+            if (data.success) {
+                alert('✅ Cập nhật voucher thành công!');
+                inputs.forEach(i => i.disabled = true);
+                btn.textContent = 'Sửa';
+                btn.classList.remove('green');
+                btn.classList.add('orange');
+            } else {
+                alert('❌ ' + (data.message || 'Không thể cập nhật voucher!'));
+            }
+        } catch (err) {
+            console.error('Lỗi khi cập nhật voucher:', err);
+            alert('⚠️ Lỗi kết nối server!');
+        }
+    });
+});
+
         })
         .catch(err => {
             console.error('Lỗi khi tải voucher:', err);
             alert('⚠️ Không thể tải danh sách voucher.');
         });
 }
-
-
-
-
-
 function bindVoucherAdd() {
     const form = document.getElementById('voucherAddForm');
     if (!form) return;
-
     form.onsubmit = async e => {
         e.preventDefault();
         const data = new FormData(form);
-
         try {
             const res = await fetch('/seller/vouchers', {
                 method: 'POST',
@@ -1326,26 +1333,109 @@ function bindVoucherAdd() {
                 },
                 body: data
             });
-
             if (!res.ok) throw new Error(`Server trả lỗi ${res.status}`);
             const d = await res.json();
-
             if (d.success) {
                 alert('✅ Thêm voucher thành công!');
                 window.location.href = '/seller/vouchers';
             } else {
                 alert('❌ Có lỗi xảy ra khi thêm voucher!');
             }
-
         } catch (err) {
             console.error('❌ Lỗi khi thêm voucher:', err);
             alert('⚠️ Lỗi kết nối đến server hoặc phản hồi không hợp lệ!');
         }
     };
 }
-
-
 })();
+// 🔒 KHÓA CHỨC NĂNG KHI SHOP ĐANG BỊ ĐÌNH CHỈ
+if (shopStatus === 'suspended') {
+    alert('⚠️ Shop của bạn hiện đang bị đình chỉ. Một số chức năng như thêm, sửa, xóa sản phẩm hoặc voucher đã bị giới hạn.');
+
+    // 🧩 Hàm tiện ích chung
+    const blockClick = (selector, message) => {
+        document.querySelectorAll(selector).forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                alert(message);
+            }, { capture: true });
+        });
+    };
+    const blockSubmit = (selector, message) => {
+        const form = document.querySelector(selector);
+        if (form) {
+            form.addEventListener('submit', e => {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                alert(message);
+            }, { capture: true });
+        }
+    };
+
+    // 🛍️ 1️⃣ Khóa sản phẩm (thêm, sửa, xóa)
+    const disableProducts = () => {
+        blockClick('.btn-edit', '🚫 Shop đang bị đình chỉ — không thể chỉnh sửa sản phẩm.');
+        blockClick('.btn-delete-product', '🚫 Shop đang bị đình chỉ — không thể xóa sản phẩm.');
+        blockSubmit('.product-form[action*="products/store"]', '🚫 Shop đang bị đình chỉ — không thể thêm sản phẩm mới.');
+    };
+
+    // 🎫 2️⃣ Khóa voucher (thêm, sửa, xóa)
+    const disableVouchers = () => {
+        blockClick('.btn-edit-voucher', '🚫 Shop đang bị đình chỉ — không thể chỉnh sửa voucher.');
+        blockClick('.btn-delete', '🚫 Shop đang bị đình chỉ — không thể xóa voucher.');
+        blockSubmit('#voucherAddForm', '🚫 Shop đang bị đình chỉ — không thể thêm voucher mới.');
+    };
+
+    // 👤 3️⃣ Khóa tài khoản cá nhân
+    const disableAccount = () => {
+        blockSubmit('#formInfo', '🚫 Shop đang bị đình chỉ — không thể thay đổi thông tin cá nhân.');
+        blockSubmit('#formPassword', '🚫 Shop đang bị đình chỉ — không thể đổi mật khẩu.');
+    };
+
+    // 🏪 4️⃣ Khóa form shop
+    const disableShopForm = () => {
+        blockSubmit('#formShop', '🚫 Shop đang bị đình chỉ — không thể cập nhật thông tin shop.');
+    };
+
+    // 🔁 5️⃣ Gọi lại mỗi khi chuyển tab (vì nội dung render động)
+    const origNavigate = window.navigate;
+    window.navigate = function(view) {
+        origNavigate(view);
+        setTimeout(() => {
+            disableProducts();
+            disableVouchers();
+            disableAccount();
+            disableShopForm();
+        }, 800);
+    };
+
+    // 🚀 6️⃣ Gọi khi mới vào dashboard
+    disableProducts();
+    disableVouchers();
+    disableAccount();
+    disableShopForm();
+}
+// 🚫 Chặn riêng nút "Thêm sản phẩm" và "Thêm voucher" khi shop bị đình chỉ
+document.addEventListener('click', function(e) {
+    // Nếu shop đang bị đình chỉ
+    if (shopStatus === 'suspended') {
+        // Kiểm tra nút "Thêm sản phẩm"
+        if (e.target.closest('a[href*="/seller/products/create"]') || e.target.closest('button.add-product-btn')) {
+            e.preventDefault();
+            alert('🚫 Shop của bạn đang bị đình chỉ — không thể thêm sản phẩm mới.');
+            return;
+        }
+
+        // Kiểm tra nút "Thêm voucher"
+        if (e.target.closest('a[href*="/seller/vouchers/create"]') || e.target.closest('button.add-voucher-btn')) {
+            e.preventDefault();
+            alert('🚫 Shop của bạn đang bị đình chỉ — không thể thêm voucher mới.');
+            return;
+        }
+    }
+});
+
 </script>
 </body>
 </html>
