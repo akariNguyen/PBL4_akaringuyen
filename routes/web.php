@@ -157,6 +157,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('vouchers/{id}/edit', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'edit'])->name('vouchers.edit');
     Route::put('vouchers/{id}', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'update'])->name('vouchers.update');
     Route::delete('vouchers/{id}', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'destroy'])->name('vouchers.destroy');
+
+Route::middleware(['auth', 'role:seller'])->group(function () {
+    Route::get('/shop/rejected', [ShopController::class, 'showRejected'])->name('seller.shop.rejected');  // ✅ Path: /shop/rejected
+    Route::post('/shop/resubmit', [ShopController::class, 'resubmit'])->name('seller.shop.resubmit');    // ✅ Path: /shop/resubmit
+
 });
 
 

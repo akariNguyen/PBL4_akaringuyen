@@ -16,7 +16,7 @@
         .cart-actions { text-align:right; }
         .quantity-control { display:flex; align-items:center; gap:5px; margin-top:5px; }
         .qty-label { font-size:15px; font-weight:500; color:#333; }
-        .qty-input { width:40px; height:32px; text-align:center; border:1px solid #ccc; border-radius:4px; background:#f9f9f9; }
+        .qty-input { width:50px; height:32px; text-align:center; border:1px solid #ccc; border-radius:4px; background:#fff; }
         .subtotal { font-size:14px; color:#444; margin-top:5px; }
         .total-box { text-align:right; margin-top:20px; font-size:18px; font-weight:600; }
         .btn-checkout { background:#ee4d2d; color:#fff; font-weight:600; padding:10px 20px; border:none; border-radius:6px; }
@@ -24,7 +24,6 @@
         .btn-checkout:disabled { background:#ccc; cursor:not-allowed; }
         .back-btn { position:fixed; top:20px; left:20px; background:#ee4d2d; color:#fff; padding:8px 14px; border-radius:6px; text-decoration:none; font-weight:600; z-index:1000; }
         .back-btn:hover { background:#c2410c; }
-        .error-message { background:#fee; color:#c33; padding:10px; border-radius:6px; margin:10px 0; border:1px solid #fcc; }
     </style>
 </head>
 <body>
@@ -34,14 +33,9 @@
 <div class="cart-container">
     <h2>🛒 Giỏ hàng của tôi</h2>
 
-    @if ($errors->has('cart'))
-        <div class="error-message">{{ $errors->first('cart') }}</div>
-    @endif
-
     @if($cart->items->isEmpty())
         <p>Giỏ hàng của bạn đang trống.</p>
     @else
-        <!-- ✅ Form checkout (DEBUG: GET để thấy URL) -->
         <form id="checkout-form" action="{{ route('checkout.fromCart') }}" method="POST">
             @csrf
             @php
@@ -60,7 +54,7 @@
                                 ? Storage::disk('public')->url($item->product->images[0])
                                 : '/Picture/products/Aothun.jpg';
                         @endphp
-                        <div class="cart-item">
+                        <div class="cart-item" data-id="{{ $item->id }}">
                             <input type="checkbox" class="item-checkbox" name="items[]" 
                                    value="{{ $item->product->id }}" 
                                    data-price="{{ $item->product->price }}" 
@@ -72,10 +66,10 @@
                                 <div class="quantity-control">
                                     <span class="qty-label">Số lượng:</span>
                                     <button type="button" class="btn btn-sm btn-outline-secondary qty-minus">-</button>
-                                    <input type="text" class="qty-input" value="{{ $item->quantity }}" readonly>
+                                    <input type="number" class="qty-input" min="1" value="{{ $item->quantity }}">
                                     <button type="button" class="btn btn-sm btn-outline-secondary qty-plus">+</button>
                                 </div>
-                                <div class="subtotal">Tổng: {{ number_format($subtotal, 0, ',', '.') }} đ</div>
+                                <div class="subtotal">Tổng: <span class="subtotal-value">{{ number_format($subtotal, 0, ',', '.') }}</span> đ</div>
                             </div>
                         </div>
                     @endforeach
@@ -95,8 +89,6 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    console.log('✅ Cart page loaded');
-    const form = document.getElementById("checkout-form");
     const checkboxes = document.querySelectorAll(".item-checkbox");
     const totalPriceEl = document.getElementById("total-price");
     const checkoutBtn = document.getElementById("checkout-btn");
@@ -104,7 +96,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateTotal() {
         let total = 0, hasSelected = false;
         checkboxes.forEach(cb => {
-            const qty = parseInt(cb.dataset.qty);
+            const item = cb.closest(".cart-item");
+            const qty = parseInt(item.querySelector(".qty-input").value);
             const price = parseFloat(cb.dataset.price);
             if (cb.checked) {
                 total += qty * price;
@@ -115,15 +108,52 @@ document.addEventListener("DOMContentLoaded", () => {
         checkoutBtn.disabled = !hasSelected;
     }
 
-    form.addEventListener("submit", e => {
-        console.log("🔥 Form submit...");
-        const checked = Array.from(checkboxes).filter(cb => cb.checked);
-        if (checked.length === 0) {
-            e.preventDefault();
-            alert("❌ Vui lòng chọn ít nhất một sản phẩm để thanh toán!");
-        }
+    // ✅ Nút + và -
+    document.querySelectorAll(".qty-minus").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const input = btn.parentElement.querySelector(".qty-input");
+            let val = Math.max(1, parseInt(input.value) - 1);
+            input.value = val;
+            updateSubtotal(btn.closest(".cart-item"));
+            updateTotal();
+            saveQuantity(btn.closest(".cart-item"));
+        });
     });
 
+    document.querySelectorAll(".qty-plus").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const input = btn.parentElement.querySelector(".qty-input");
+            input.value = parseInt(input.value) + 1;
+            updateSubtotal(btn.closest(".cart-item"));
+            updateTotal();
+            saveQuantity(btn.closest(".cart-item"));
+        });
+    });
+
+    // ✅ Cập nhật subtotal mỗi item
+    function updateSubtotal(item) {
+        const price = parseFloat(item.querySelector(".item-checkbox").dataset.price);
+        const qty = parseInt(item.querySelector(".qty-input").value);
+        const subtotal = price * qty;
+        item.querySelector(".subtotal-value").textContent = subtotal.toLocaleString("vi-VN");
+        item.querySelector(".item-checkbox").dataset.qty = qty;
+    }
+
+    // ✅ Gửi AJAX cập nhật DB
+    function saveQuantity(item) {
+        const id = item.dataset.id;
+        const qty = item.querySelector(".qty-input").value;
+        fetch(`/cart/update/${id}`, {
+            method: "POST",
+            headers: {
+                "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ quantity: qty })
+        });
+    }
+
+    // ✅ Khi chọn / bỏ chọn
     checkboxes.forEach(cb => cb.addEventListener("change", updateTotal));
     updateTotal();
 });

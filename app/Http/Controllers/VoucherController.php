@@ -41,32 +41,42 @@ class VoucherController extends Controller
      * 💾 Lưu voucher mới
      */
     public function store(Request $request)
-    {
-        $shop = Shop::where('user_id', Auth::id())->first();
-        if (!$shop) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy shop!']);
-        }
+{
+    $shop = Shop::where('user_id', Auth::id())->first();
 
-        $request->validate([
-            'code' => 'required|string|max:50|unique:vouchers,code',
-            'discount_amount' => 'required|numeric|min:0',
-            'expiry_date' => 'required|date|after:today',
-        ]);
-
-        $voucher = Voucher::create([
-            'shop_id' => $shop->user_id,
-            'code' => strtoupper($request->code),
-            'discount_amount' => $request->discount_amount,
-            'expiry_date' => $request->expiry_date,
-            'status' => 'active',
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Thêm voucher mới thành công!',
-            'voucher' => $voucher
-        ]);
+    if (!$shop) {
+        return response()->json(['success' => false, 'message' => 'Không tìm thấy shop!']);
     }
+
+    // 🚫 Nếu shop bị đình chỉ thì không cho thêm voucher
+    if ($shop->status === 'suspended') {
+        return response()->json([
+            'success' => false,
+            'message' => '🚫 Shop của bạn đang bị đình chỉ — không thể thêm voucher mới.'
+        ], 403);
+    }
+
+    $request->validate([
+        'code' => 'required|string|max:50|unique:vouchers,code',
+        'discount_amount' => 'required|numeric|min:0',
+        'expiry_date' => 'required|date|after:today',
+    ]);
+
+    $voucher = Voucher::create([
+        'shop_id' => $shop->user_id,
+        'code' => strtoupper($request->code),
+        'discount_amount' => $request->discount_amount,
+        'expiry_date' => $request->expiry_date,
+        'status' => 'active',
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Thêm voucher mới thành công!',
+        'voucher' => $voucher
+    ]);
+}
+
 
     /**
      * ✏️ Cập nhật voucher (AJAX)

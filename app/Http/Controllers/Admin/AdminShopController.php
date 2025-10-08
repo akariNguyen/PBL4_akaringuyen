@@ -10,7 +10,7 @@ class AdminShopController extends Controller
 {
     public function index(Request $request)
 {
-    $shopCount = \App\Models\Shop::count();
+    $shopCount = \App\Models\Shop::whereIn('status', ['active', 'suspended'])->count();
 
     $defaultFrom = \App\Models\Shop::min('created_at');
     $defaultFrom = $defaultFrom ? \Carbon\Carbon::parse($defaultFrom)->format('Y-m-d') : now()->format('Y-m-d');
@@ -27,13 +27,15 @@ class AdminShopController extends Controller
     $sortBy = $request->input('sort_by', 'created_at');
     $sortOrder = $request->input('sort_order', 'desc');
 
-    $shops = \App\Models\Shop::query()
-        ->when($search, function ($q) use ($search) {
-            $q->where('name', 'like', "%$search%");
-        })
-        ->whereBetween('created_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
-        ->orderBy($sortBy, $sortOrder)
-        ->get();
+   $shops = \App\Models\Shop::query()
+    ->when($search, function ($q) use ($search) {
+        $q->where('name', 'like', "%$search%");
+    })
+    ->whereBetween('created_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+    ->whereIn('status', ['active', 'suspended']) // ✅ chỉ lấy shop active hoặc suspended
+    ->orderBy($sortBy, $sortOrder)
+    ->get();
+
 
     return view('admin.shops', compact('shops', 'shopCount', 'defaultFrom', 'defaultTo'));
 }
@@ -46,22 +48,33 @@ class AdminShopController extends Controller
     }
 
     public function toggleStatus($id)
-    {
-        $shop = Shop::findOrFail($id);
+{
+    $shop = Shop::findOrFail($id);
+    $seller = $shop->user; // 🔹 lấy ra user (seller) của shop
 
-        // Nếu đang active -> chuyển sang suspended
-        if ($shop->status === 'active') {
-            $shop->status = 'suspended';
-        } 
-        // Nếu đang suspended -> chuyển sang active
-        elseif ($shop->status === 'suspended') {
-            $shop->status = 'active';
+    // Nếu đang "active" → chuyển sang "suspended"
+    if ($shop->status === 'active') {
+        $shop->status = 'suspended';
+        $shop->save();
+        return back()->with('success', 'Shop đã bị tạm ngưng!');
+    }
+
+    // Nếu đang "suspended" → kiểm tra seller trước khi bật lại
+    if ($shop->status === 'suspended') {
+        // ⚠️ Nếu người bán đang inactive → báo lỗi
+        if (!$seller || $seller->status === 'inactive') {
+            return back()->with('error', '❌ Không thể kích hoạt shop vì người bán đang ở trạng thái "inactive".');
         }
 
+        // ✅ Nếu hợp lệ → cho phép bật lại
+        $shop->status = 'active';
         $shop->save();
-
-        return back()->with('success', 'Đã thay đổi tình trạng shop!');
+        return back()->with('success', '✅ Shop đã được kích hoạt lại!');
     }
+
+    return back()->with('error', 'Trạng thái shop không hợp lệ.');
+}
+
     public function pending()
 {
     $shops = \App\Models\Shop::where('status', 'pending')->get();
@@ -119,5 +132,6 @@ public function reject($id)
         'totalRevenue' => number_format($totalRevenue ?? 0, 0, ',', '.') . ' ₫',
     ]);
 }
+
 
 }

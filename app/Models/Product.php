@@ -40,6 +40,16 @@ class Product extends Model
     public function averageRating() {
         return $this->reviews()->avg('rating');
     }
+    protected static function booted()
+    {
+        static::saving(function ($product) {
+            if ($product->quantity <= 0) {
+                $product->status = 'out_of_stock';
+            } elseif ($product->status === 'out_of_stock' && $product->quantity > 0) {
+                $product->status = 'in_stock';
+            }
+        });
+    }
 }
 
 

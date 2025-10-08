@@ -94,32 +94,100 @@ class ShopController extends Controller
 
 
     public function updateAccount(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user || $user->role !== 'seller') {
-            abort(403);
-        }
-
-        $shop = Shop::find($user->id);
-        if (!$shop) {
-            return redirect()->back()->withErrors(['shop' => 'Chưa có shop để cập nhật.']);
-        }
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'status' =>'suspended' ,
-            'logo' => 'nullable|image|max:4096',
-        ]);
-
-        $shop->name = $validated['name'];
-        $shop->description = $validated['description'] ?? $shop->description;
-        $shop->status = $validated['status'];
-        if ($request->hasFile('logo')) {
-            $shop->logo_path = $request->file('logo')->store('shops', 'public');
-        }
-        $shop->save();
-
-        return response()->json(['success' => true, 'message' => 'Cập nhật shop thành công', 'name' => $shop->name, 'logo' => $shop->logo_path ? Storage::disk('public')->url($shop->logo_path) : '/Picture/logo.png']);
+{
+    $user = Auth::user();
+    if (!$user || $user->role !== 'seller') {
+        abort(403);
     }
+
+    $shop = Shop::where('user_id', $user->id)->first();
+    if (!$shop) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Không tìm thấy shop để cập nhật.',
+        ], 404);
+    }
+
+    // 🚫 Nếu shop bị treo (suspended) → không cho phép chỉnh sửa
+    if ($shop->status === 'suspended') {
+        return response()->json([
+            'success' => false,
+            'message' => '🚫 Shop của bạn đang bị tạm khóa. Không thể cập nhật thông tin.',
+        ], 403);
+    }
+
+    // ✅ Validate, KHÔNG bao gồm "status"
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'logo' => 'nullable|image|max:4096',
+    ]);
+
+    // ✅ Cập nhật các trường được phép
+    $shop->name = $validated['name'];
+    $shop->description = $validated['description'] ?? $shop->description;
+
+    if ($request->hasFile('logo')) {
+        $shop->logo_path = $request->file('logo')->store('shops', 'public');
+    }
+
+    // 🚫 KHÔNG thay đổi trạng thái
+    $shop->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => '✅ Cập nhật thông tin shop thành công!',
+        'name' => $shop->name,
+        'logo' => $shop->logo_path
+            ? Storage::disk('public')->url($shop->logo_path)
+            : '/Picture/logo.png',
+    ]);
+}
+
+
+
+    public function showRejected()
+{
+    $shop = auth()->user()->shop;
+
+    if (!$shop) {
+        return redirect()->route('shops.create');
+    }
+
+    return view('shop_rejected', compact('shop'));  // ✅ Fix: Đổi thành 'shop_rejected' để khớp file
+}
+
+public function resubmit(Request $request)
+{
+    $shop = auth()->user()->shop;
+
+    // --- Validate dữ liệu ---
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
+
+    // --- Cập nhật thông tin shop ---
+    $shop->update([
+        'name' => $validated['name'],
+        'description' => $validated['description'] ?? null,
+        'status' => 'pending', // Đặt lại trạng thái chờ duyệt
+    ]);
+
+    // --- Upload logo (nếu có) ---
+    if ($request->hasFile('logo')) {
+        $path = $request->file('logo')->store('shop_logos', 'public');
+        $shop->logo_path = $path;
+        $shop->save();
+    }
+
+    // --- Đăng xuất người dùng ---
+    auth()->logout();
+
+    // --- Quay về trang đăng nhập kèm thông báo ---
+    return redirect()->route('login')->with('success', '✅ Đã gửi yêu cầu thành công! Vui lòng đăng nhập lại sau khi shop được duyệt.');
+}
+
+
 }
