@@ -28,7 +28,7 @@
 </head>
 <body>
 
-<a href="javascript:history.back()" class="back-btn">← Quay lại</a>
+<a href="{{ route('customer.dashboard') }}" class="back-btn">← Quay lại</a>
 
 <div class="cart-container">
     <h2>🛒 Giỏ hàng của tôi</h2>

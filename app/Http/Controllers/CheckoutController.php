@@ -9,14 +9,13 @@ use App\Models\Address;
 use App\Models\Voucher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class CheckoutController extends Controller
 {
     /**
-     * 🧹 Tự động xóa voucher hết hạn mỗi khi gọi controller
+     * 🧹 Xóa voucher hết hạn khi controller được gọi
      */
     public function __construct()
     {
@@ -50,14 +49,14 @@ class CheckoutController extends Controller
             ->where('expiry_date', '>=', now())
             ->get();
 
-        // ✅ Voucher toàn hệ thống (admin)
+        // ✅ Voucher toàn hệ thống
         $adminVouchers = Voucher::whereNull('shop_id')
             ->where('status', 'active')
             ->where('expiry_date', '>=', now())
             ->get();
 
         $vouchers = [
-            'shop' => $shopVouchers,
+            'shop'  => $shopVouchers,
             'admin' => $adminVouchers,
         ];
 
@@ -80,8 +79,8 @@ class CheckoutController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'address'        => 'nullable|string|max:255',
-            'address_id'     => 'nullable|integer',
+            'address'    => 'nullable|string|max:255',
+            'address_id' => 'nullable|integer',
         ]);
 
         // ✅ Lấy địa chỉ giao hàng
@@ -115,7 +114,7 @@ class CheckoutController extends Controller
             $shippingFee = 38000;
             $discount    = 0;
 
-            // ✅ Áp dụng voucher nếu có
+            // ✅ Áp dụng voucher
             if ($request->filled('voucher_shop')) {
                 $v = Voucher::find($request->input('voucher_shop'));
                 if ($v && $v->expiry_date >= now() && $v->status === 'active') {
@@ -152,26 +151,28 @@ class CheckoutController extends Controller
         }
 
         /**
-         * === CASE 2: Thanh toán từ giỏ hàng (nhiều shop + nhiều voucher) ===
+         * === CASE 2: Thanh toán nhiều sản phẩm từ giỏ hàng ===
          */
         elseif ($request->has('items')) {
             $user = Auth::user();
             $cart = $user->cart()->with('items.product.seller.shop')->first();
             $selectedItems = $cart->items->whereIn('product_id', $request->input('items'));
+
             if ($selectedItems->isEmpty()) {
                 return redirect()->route('cart.my')->withErrors(['cart' => 'Không tìm thấy sản phẩm để thanh toán.']);
             }
 
-            // ✅ Nhóm sản phẩm theo shop
+            // ✅ Nhóm theo shop
             $groupedItems = $selectedItems->groupBy(fn($i) => optional($i->product->seller->shop)->user_id ?? 0);
             $selectedVouchers = $request->input('vouchers', []);
             $shippingFee = 38000;
-            $finalTotal = 0;
+            $totalAllOrders = 0;
 
             foreach ($groupedItems as $shopId => $items) {
                 $shopTotal = $items->sum(fn($i) => $i->product->price * $i->quantity);
                 $discount = 0;
 
+                // 🎟️ Voucher shop
                 if (!empty($selectedVouchers[$shopId])) {
                     $voucher = Voucher::find($selectedVouchers[$shopId]);
                     if ($voucher && $voucher->status === 'active' && $voucher->expiry_date >= now()) {
@@ -179,43 +180,51 @@ class CheckoutController extends Controller
                     }
                 }
 
-                $finalTotal += $shopTotal - $discount + $shippingFee;
-            }
+                $finalShopTotal = max($shopTotal - $discount + $shippingFee, 0);
+                $totalAllOrders += $finalShopTotal;
 
-            $order = Order::create([
-                'user_id'     => Auth::id(),
-                'total_price' => $finalTotal,
-                'address'     => $shippingAddress,
-                'status'      => 'pending',
-            ]);
-
-            foreach ($selectedItems as $item) {
-                OrderItem::create([
-                    'order_id'     => $order->id,
-                    'product_id'   => $item->product->id,
-                    'seller_id'    => $item->product->seller_id,
-                    'product_name' => $item->product->name,
-                    'price'        => $item->product->price,
-                    'quantity'     => $item->quantity,
+                // 🧾 Tạo đơn riêng cho shop
+                $order = Order::create([
+                    'user_id'     => Auth::id(),
+                    'total_price' => $finalShopTotal,
+                    'address'     => $shippingAddress,
+                    'status'      => 'pending',
                 ]);
 
-                $item->product->increment('sold_quantity', $item->quantity);
+                foreach ($items as $item) {
+                    OrderItem::create([
+                        'order_id'     => $order->id,
+                        'product_id'   => $item->product->id,
+                        'seller_id'    => $item->product->seller_id,
+                        'product_name' => $item->product->name,
+                        'price'        => $item->product->price,
+                        'quantity'     => $item->quantity,
+                    ]);
+
+                    $item->product->increment('sold_quantity', $item->quantity);
+                }
+
+                // 🗑️ Xóa các sản phẩm đã đặt khỏi giỏ
+                $cart->items()
+                    ->whereIn('product_id', $items->pluck('product_id'))
+                    ->delete();
+            }
+
+            // 🌐 Voucher toàn hệ thống (admin)
+            if ($request->filled('admin_voucher')) {
+                $adminVoucher = Voucher::find($request->input('admin_voucher'));
+                if ($adminVoucher && $adminVoucher->status === 'active' && $adminVoucher->expiry_date >= now()) {
+                    $totalAllOrders = max($totalAllOrders - $adminVoucher->discount_amount, 0);
+                }
             }
         }
 
-        return redirect()->route('customer.dashboard')->with('success', 'Đặt hàng thành công!');
+        // ✅ Sau khi đặt hàng → quay về trang “Đơn hàng của tôi”
+        return redirect()->route('orders.my')->with('success', 'Đặt hàng thành công!');
     }
 
     /**
-     * ✅ Trang cảm ơn
-     */
-    public function success()
-    {
-        return view('checkout-success')->with('message', 'Cảm ơn bạn đã đặt hàng!');
-    }
-
-    /**
-     * ✅ Hiển thị checkout nhiều sản phẩm (có nhiều voucher mỗi shop)
+     * ✅ Hiển thị checkout nhiều sản phẩm (nhiều shop)
      */
     public function fromCart(Request $request)
     {

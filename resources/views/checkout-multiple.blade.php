@@ -1,5 +1,5 @@
 <?php
-// Tính ngày giao hàng (3–5 ngày sau)
+// 🕒 Tính ngày giao hàng (3–5 ngày sau)
 $currentDate = new DateTime();
 $startShippingDate = (clone $currentDate)->modify('+3 days')->format('d M');
 $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
@@ -70,7 +70,14 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
     <form action="{{ route('checkout.store') }}" method="POST">
         @csrf
 
-        {{-- Địa chỉ nhận hàng --}}
+        {{-- ✅ Gửi danh sách sản phẩm đã chọn --}}
+        @foreach($grouped as $shopId => $items)
+            @foreach($items as $item)
+                <input type="hidden" name="items[]" value="{{ $item->product->id }}">
+            @endforeach
+        @endforeach
+
+        {{-- 🏠 Địa chỉ nhận hàng --}}
         <div class="address-section">
             <h3>Địa Chỉ Nhận Hàng</h3>
             @php
@@ -96,7 +103,7 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
                    value="{{ old('address', $defaultText) }}">
         </div>
 
-        {{-- Nhóm sản phẩm theo từng shop --}}
+        {{-- 🛍️ Sản phẩm theo từng shop --}}
         <div class="product-summary">
             <h3>Sản Phẩm Được Chọn</h3>
             @foreach($grouped as $shopId => $items)
@@ -152,9 +159,9 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
             @endforeach
         </div>
 
-        {{-- 🌐 Voucher Toàn Hệ Thống --}}
+        {{-- 🌐 Voucher toàn hệ thống --}}
         <div class="voucher-section">
-            <h3>🌐 Voucher Toàn Hệ Thống </h3>
+            <h3>🌐 Voucher Toàn Hệ Thống</h3>
             @if($adminVouchers->isNotEmpty())
                 <select name="admin_voucher" id="admin-voucher" class="voucher-select" data-type="admin">
                     <option value="">-- Không áp dụng voucher toàn hệ thống --</option>
