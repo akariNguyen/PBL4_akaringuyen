@@ -8,14 +8,8 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * Các field cho phép gán hàng loạt
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
@@ -27,21 +21,11 @@ class User extends Authenticatable
         'password',
     ];
 
-    /**
-     * Các field ẩn khi trả về JSON
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Kiểu dữ liệu cần cast
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -52,54 +36,32 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Quan hệ: User có nhiều Review
-     */
-    public function reviews()
-    {
-        return $this->hasMany(Review::class);
-    }
+    // --- Quan hệ ---
+    public function reviews()     { return $this->hasMany(Review::class); }
+    public function addresses()   { return $this->hasMany(Address::class); }
+    public function defaultAddress() { return $this->hasOne(Address::class)->where('is_default', true); }
+    public function shop()        { return $this->hasOne(Shop::class, 'user_id'); }
+    public function cart()        { return $this->hasOne(Cart::class); }
 
     /**
-     * Quan hệ: User có nhiều Address
-     */
-    public function addresses()
-    {
-        return $this->hasMany(Address::class);
-    }
-
-    /**
-     * Quan hệ: User có 1 Address mặc định
-     */
-    public function defaultAddress()
-    {
-        return $this->hasOne(Address::class)->where('is_default', true);
-    }
-
-    /**
-     * Quan hệ: User có 1 Shop
-     */
-    public function shop()
-    {
-        return $this->hasOne(Shop::class, 'user_id');
-    }
-
-    /**
-     * Quan hệ: User có 1 Cart
-     */
-    public function cart()
-    {
-        return $this->hasOne(Cart::class);
-    }
-
-    /**
-     * Khi tạo user → tự động tạo Cart (nếu là customer)
+     * Sự kiện Model
      */
     protected static function booted()
     {
+        // 🔹 Tự tạo giỏ hàng cho khách hàng mới
         static::created(function ($user) {
             if ($user->role === 'customer') {
                 $user->cart()->create();
+            }
+        });
+
+        // 🔹 Khi cập nhật user → nếu seller bị inactive thì shop bị suspended
+        static::updating(function ($user) {
+            if ($user->role === 'seller' && $user->isDirty('status') && $user->status === 'inactive') {
+                $shop = $user->shop;
+                if ($shop && $shop->status !== 'suspended') {
+                    $shop->update(['status' => 'suspended']);
+                }
             }
         });
     }

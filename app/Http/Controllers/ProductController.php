@@ -11,21 +11,43 @@ use Illuminate\Support\Facades\Storage;
 class ProductController extends Controller
 {
     public function create()
-    {
-        $user = Auth::user();
-        if (!$user || $user->role !== 'seller') {
-            abort(403);
-        }
-        return view('product_create');
+{
+    $user = Auth::user();
+
+    // ✅ Kiểm tra đăng nhập và vai trò
+    if (!$user || $user->role !== 'seller') {
+        abort(403, 'Chỉ người bán mới được truy cập trang này.');
     }
+
+    // ✅ Lấy shop của user
+    $shop = \App\Models\Shop::where('user_id', $user->id)->first();
+
+    // ❌ Nếu không có shop hoặc shop bị đình chỉ → chặn
+    if (!$shop || $shop->status === 'suspended') {
+        return redirect()
+            ->route('seller.dashboard')
+            ->with('error', '🚫 Shop của bạn đang bị đình chỉ — không thể thêm sản phẩm mới.');
+    }
+
+    // ✅ Cho phép truy cập nếu hợp lệ
+    return view('product_create');
+}
+
 
    public function show(Request $request, $id)
 {
+    // Lấy sản phẩm kèm shop và người bán
     $product = Product::with(['reviews.user', 'seller.shop'])->findOrFail($id);
 
+    // ❌ Nếu sản phẩm hết hàng hoặc shop không hoạt động → ẩn / lỗi 404
+    if ($product->status !== 'in_stock' || !$product->seller || !$product->seller->shop || $product->seller->shop->status !== 'active') {
+        abort(404, 'Sản phẩm không khả dụng hoặc shop đã bị tạm ngưng.');
+    }
+
+    // --- Phần còn lại giữ nguyên ---
     $avgRating = $product->reviews()->avg('rating');
 
-    $filter = $request->get('filter', 'all'); 
+    $filter = $request->get('filter', 'all');
     $reviewsQuery = $product->reviews()->with('user');
 
     switch ($filter) {
@@ -43,11 +65,12 @@ class ProductController extends Controller
     $variations = [];
 
     $shop = $product->seller && $product->seller->role === 'seller'
-    ? $product->seller->shop
-    : null;
+        ? $product->seller->shop
+        : null;
 
     return view('product_show', compact('product', 'variations', 'avgRating', 'reviews', 'filter', 'shop'));
 }
+
 
 
 
