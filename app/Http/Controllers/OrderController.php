@@ -35,13 +35,22 @@ class OrderController extends Controller
         ]);
 
         OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => $product->id,
-            'seller_id' => $product->seller_id,
-            'product_name' => $product->name,
-            'price' => $product->price,
-            'quantity' => $qty,
+            'order_id'      => $order->id,
+            'product_id'    => $product->id,
+            'seller_id'     => $product->seller_id,
+            'product_name'  => $product->name,
+            'price'         => $product->price,
+            'quantity'      => $qty,
         ]);
+
+        // ✅ Cập nhật số lượng và số đã bán
+        if ($product->quantity >= $qty) {
+            $product->increment('sold_quantity', $qty);
+            $product->decrement('quantity', $qty);
+        } else {
+            return back()->with('error', 'Không đủ hàng trong kho!');
+        }
+
 
         \Log::info('Order created successfully', [
             'order_id' => $order->id,
@@ -121,6 +130,15 @@ class OrderController extends Controller
         }
         if ($order->status !== 'pending') {
             return response()->json(['success' => false, 'message' => 'Chỉ có thể hủy đơn ở trạng thái Chờ xử lý'], 422);
+        }
+        // ✅ Hoàn lại số lượng tồn kho khi hủy đơn
+        foreach ($order->items as $item) {
+            $product = Product::find($item->product_id);
+            if ($product) {
+                // Tránh âm nếu có lỗi trước đó
+                $product->decrement('sold_quantity', min($item->quantity, $product->sold_quantity));
+                $product->increment('quantity', $item->quantity);
+            }
         }
 
         $order->status = 'cancelled';

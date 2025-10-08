@@ -100,29 +100,25 @@ public function reject($id)
 {
     $shop = \App\Models\Shop::with('user')->findOrFail($id);
 
-    // Số sản phẩm đang bán (status = in_stock)
+    // Sản phẩm đang bán
     $inStockCount = \App\Models\Product::where('seller_id', $shop->user_id)
         ->where('status', 'in_stock')
         ->count();
 
-    // Tổng sản phẩm đã bán
+    // Sản phẩm đã bán (chỉ tính completed)
     $soldCount = \App\Models\OrderItem::whereHas('order', function ($q) {
             $q->where('status', 'completed');
         })
-        ->whereHas('product', function ($q) use ($shop) {
-            $q->where('seller_id', $shop->user_id);
-        })
+        ->where('seller_id', $shop->user_id)
         ->sum('quantity');
 
-    // Tổng doanh thu
-    $totalRevenue = \App\Models\OrderItem::whereHas('order', function ($q) {
-            $q->where('status', 'completed');
-        })
-        ->whereHas('product', function ($q) use ($shop) {
+    // ✅ Tổng doanh thu (dựa theo tổng tiền đơn hàng)
+    $totalRevenue = \App\Models\Order::query()
+        ->where('status', 'completed')
+        ->whereHas('items', function ($q) use ($shop) {
             $q->where('seller_id', $shop->user_id);
         })
-        ->selectRaw('SUM(quantity * price) as revenue')
-        ->value('revenue');
+        ->sum('total_price');
 
     return response()->json([
         'shop' => $shop,

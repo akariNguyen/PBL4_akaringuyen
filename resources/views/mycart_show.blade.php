@@ -55,10 +55,15 @@
                                 : '/Picture/products/Aothun.jpg';
                         @endphp
                         <div class="cart-item" data-id="{{ $item->id }}">
-                            <input type="checkbox" class="item-checkbox" name="items[]" 
-                                   value="{{ $item->product->id }}" 
-                                   data-price="{{ $item->product->price }}" 
-                                   data-qty="{{ $item->quantity }}">
+                            <input type="checkbox" class="item-checkbox" 
+       name="items[{{ $item->product->id }}][id]" 
+       value="{{ $item->product->id }}" 
+       data-price="{{ $item->product->price }}" 
+       data-qty="{{ $item->quantity }}">
+
+<input type="hidden" name="items[{{ $item->product->id }}][quantity]" 
+       value="{{ $item->quantity }}" class="qty-hidden">
+
                             <img src="{{ $img }}" alt="{{ $item->product->name }}">
                             <div class="cart-info">
                                 <div><strong>{{ $item->product->name }}</strong></div>
@@ -135,6 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const price = parseFloat(item.querySelector(".item-checkbox").dataset.price);
         const qty = parseInt(item.querySelector(".qty-input").value);
         const subtotal = price * qty;
+        item.querySelector(".qty-hidden").value = qty;
         item.querySelector(".subtotal-value").textContent = subtotal.toLocaleString("vi-VN");
         item.querySelector(".item-checkbox").dataset.qty = qty;
     }

@@ -102,11 +102,10 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
                         @endfor
                     </div>
                     <span class="reviews">{{ number_format($product->reviews->count()) }} đánh giá</span>
-                    <span class="reviews">Đã Bán {{ number_format($product->sold_quantity ?? 0, 0, ',', '.') }}k</span>
+                    <span class="reviews">Đã Bán {{ number_format($product->sold_quantity ?? 0, 0, ',', '.') }}</span>
                 </div>
                 <div class="price">đ{{ number_format($product->price, 0, ',', '.') }}</div>
-                <div class="shipping">Vận Chuyển: Nhận từ {{ $startShippingDate }} - {{ $endShippingDate }}, phí giao đ0</div>
-                <div class="voucher">Tặng Voucher đ15.000 nếu đơn giá sau thời gian trên.</div>
+            
                 <div class="variations">
                     <div class="var-label">Tên</div>
                     <div class="var-buttons">
@@ -120,7 +119,7 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
                     <button class="qty-btn minus">-</button>
                     <input class="qty-input" type="number" value="1" min="1" id="quantity">
                     <button class="qty-btn plus">+</button>
-                    <span>({{ $product->quantity - ($product->sold_quantity ?? 0) }} sản phẩm có sẵn)</span>
+                    <span>({{ $product->quantity}} sản phẩm có sẵn)</span>
                 </div>
                 <div class="actions">
                     <!-- Form thêm giỏ hàng -->

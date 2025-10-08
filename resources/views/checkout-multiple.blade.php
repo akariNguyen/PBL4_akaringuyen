@@ -72,10 +72,11 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
 
         {{-- ✅ Gửi danh sách sản phẩm đã chọn --}}
         @foreach($grouped as $shopId => $items)
-            @foreach($items as $item)
-                <input type="hidden" name="items[]" value="{{ $item->product->id }}">
-            @endforeach
-        @endforeach
+    @foreach($items as $item)
+        <input type="hidden" name="items[{{ $item->product->id }}][id]" value="{{ $item->product->id }}">
+        <input type="hidden" name="items[{{ $item->product->id }}][quantity]" value="{{ $item->quantity }}">
+    @endforeach
+@endforeach
 
         {{-- 🏠 Địa chỉ nhận hàng --}}
         <div class="address-section">

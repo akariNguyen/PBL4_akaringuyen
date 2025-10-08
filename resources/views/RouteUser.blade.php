@@ -134,7 +134,8 @@
                                 $shop = \App\Models\Shop::find($p->seller_id);
                                 $supplier = $shop ? $shop->name : ($p->seller->name ?? 'Nhà cung cấp');
                                 $avgRating = round($p->reviews()->avg('rating') ?? 0, 1);
-                                $soldCount = OrderItem::where('product_id', $p->id)->sum('quantity');
+                                $soldCount = $p->sold_quantity ?? 0;
+
                             ?>
                             <div class="card">
                                 <img src="{{ $img }}" alt="{{ $p->name }}">

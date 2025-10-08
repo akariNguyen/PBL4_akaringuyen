@@ -156,7 +156,8 @@ class ProductController extends Controller
     \App\Models\OrderItem::where('product_id', $product->id)
         ->update(['product_name' => $product->name]);
 
-    return redirect()->back()->with('success', 'Cập nhật sản phẩm thành công');
+    return redirect()->route('seller.dashboard')
+    ->with('success', 'Cập nhật sản phẩm thành công');
 }
 
 

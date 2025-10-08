@@ -55,11 +55,6 @@ class CheckoutController extends Controller
             ->where('expiry_date', '>=', now())
             ->get();
 
-        $vouchers = [
-            'shop'  => $shopVouchers,
-            'admin' => $adminVouchers,
-        ];
-
         return view('checkout', compact(
             'product',
             'cart',
@@ -69,7 +64,8 @@ class CheckoutController extends Controller
             'finalTotal',
             'addresses',
             'defaultAddress',
-            'vouchers'
+            'shopVouchers',
+            'adminVouchers'
         ));
     }
 
@@ -105,8 +101,7 @@ class CheckoutController extends Controller
             $cart = Session::get('cart');
             $product = Product::findOrFail($cart['product_id']);
 
-            $availableStock = $product->quantity - ($product->sold_quantity ?? 0);
-            if ($cart['quantity'] > $availableStock) {
+            if ($cart['quantity'] > $product->quantity) {
                 return back()->withErrors(['quantity' => 'Số lượng vượt quá tồn kho!']);
             }
 
@@ -146,7 +141,10 @@ class CheckoutController extends Controller
                 'quantity'     => $cart['quantity'],
             ]);
 
+            // ✅ Cập nhật tồn kho & sold_quantity
             $product->increment('sold_quantity', $cart['quantity']);
+            $product->decrement('quantity', $cart['quantity']);
+
             Session::forget('cart');
         }
 
@@ -156,11 +154,28 @@ class CheckoutController extends Controller
         elseif ($request->has('items')) {
             $user = Auth::user();
             $cart = $user->cart()->with('items.product.seller.shop')->first();
-            $selectedItems = $cart->items->whereIn('product_id', $request->input('items'));
 
-            if ($selectedItems->isEmpty()) {
-                return redirect()->route('cart.my')->withErrors(['cart' => 'Không tìm thấy sản phẩm để thanh toán.']);
-            }
+            // 🔹 Lấy danh sách sản phẩm dạng [id => quantity]
+            // LẤY items từ request và chuẩn hóa về dạng Collection: [product_id => quantity]
+$itemsData = collect($request->input('items', []))
+    ->mapWithKeys(function ($val, $key) {
+        // Hỗ trợ 2 kiểu form:
+        // a) items[][id]=123, items[][quantity]=2  → $val=['id'=>123,'quantity'=>2]
+        // b) items[123][quantity]=2                → $key=123, $val=['quantity'=>2]
+        if (is_array($val) && isset($val['id'])) {
+            return [(int) $val['id'] => (int) ($val['quantity'] ?? 1)];
+        }
+        return [(int) $key => (int) ($val['quantity'] ?? 1)];
+    });
+
+// Lọc item trong giỏ theo product_id đã chọn
+$selectedItems = $cart->items->whereIn('product_id', $itemsData->keys());
+
+// Gán lại số lượng thực tế từ request
+foreach ($selectedItems as $item) {
+    $item->quantity = (int) ($itemsData[$item->product_id] ?? $item->quantity);
+}
+
 
             // ✅ Nhóm theo shop
             $groupedItems = $selectedItems->groupBy(fn($i) => optional($i->product->seller->shop)->user_id ?? 0);
@@ -201,10 +216,12 @@ class CheckoutController extends Controller
                         'quantity'     => $item->quantity,
                     ]);
 
+                    // ✅ Cập nhật kho
                     $item->product->increment('sold_quantity', $item->quantity);
+                    $item->product->decrement('quantity', $item->quantity);
                 }
 
-                // 🗑️ Xóa các sản phẩm đã đặt khỏi giỏ
+                // 🗑️ Xóa sản phẩm đã thanh toán khỏi giỏ
                 $cart->items()
                     ->whereIn('product_id', $items->pluck('product_id'))
                     ->delete();
@@ -219,7 +236,6 @@ class CheckoutController extends Controller
             }
         }
 
-        // ✅ Sau khi đặt hàng → quay về trang “Đơn hàng của tôi”
         return redirect()->route('orders.my')->with('success', 'Đặt hàng thành công!');
     }
 
@@ -235,10 +251,27 @@ class CheckoutController extends Controller
         if (!$cart) return redirect()->route('cart.my')->withErrors(['cart' => 'Giỏ hàng trống.']);
 
         $items = (array) $request->input('items', []);
-        if (empty($items)) return redirect()->route('cart.my')->withErrors(['cart' => 'Bạn chưa chọn sản phẩm nào để thanh toán.']);
+        if (empty($items)) {
+            return redirect()->route('cart.my')->withErrors(['cart' => 'Bạn chưa chọn sản phẩm nào để thanh toán.']);
+        }
 
-        $selectedItems = $cart->items->whereIn('product_id', $items);
-        if ($selectedItems->isEmpty()) return redirect()->route('cart.my')->withErrors(['cart' => 'Không tìm thấy sản phẩm để thanh toán.']);
+        // 🟢 Lấy đúng cấu trúc [id => quantity]
+        // Chuẩn hóa items về dạng [product_id => quantity]
+$itemsData = collect($request->input('items', []))
+    ->mapWithKeys(function ($val, $key) {
+        if (is_array($val) && isset($val['id'])) {
+            return [(int) $val['id'] => (int) ($val['quantity'] ?? 1)];
+        }
+        return [(int) $key => (int) ($val['quantity'] ?? 1)];
+    });
+
+// Lấy item trong giỏ theo danh sách product_id
+$selectedItems = $cart->items->whereIn('product_id', $itemsData->keys());
+
+// Gán lại số lượng đúng để render
+foreach ($selectedItems as $item) {
+    $item->quantity = (int) ($itemsData[$item->product_id] ?? $item->quantity);
+}
 
         // ✅ Nhóm theo shop
         $grouped = $selectedItems->groupBy(fn($i) => optional($i->product->seller->shop)->user_id ?? 0)->sortKeys();

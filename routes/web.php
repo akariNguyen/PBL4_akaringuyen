@@ -46,13 +46,15 @@ Route::middleware('auth')->group(function () {
 });
 
 // 🛍️ Products (seller only)
-Route::middleware(['auth'])->group(function () {
+// 🛍️ Products (seller only)
+Route::middleware(['auth'])->prefix('seller')->group(function () {
     Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
     Route::post('/products', [ProductController::class, 'store'])->name('products.store');
     Route::get('/products/{id}', [ProductController::class, 'show'])->name('product.show');
     Route::put('/products/{id}', [ProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('products.destroy');
 });
+
 
 // ⚙️ Account pages
 Route::middleware(['auth'])->group(function () {

@@ -72,20 +72,22 @@ class AdminAnalyticsController extends Controller
 
         // 🧾 Truy vấn doanh thu (chỉ lấy shop đang active)
         $data = Shop::where('shops.status', 'active') // ✅ chỉ lấy shop đang hoạt động
-            ->leftJoin('users', 'shops.user_id', '=', 'users.id')
-            ->leftJoin('order_items', 'order_items.seller_id', '=', 'users.id')
-            ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')
-            ->select(
-                'shops.user_id as id',
-                'shops.name as shop_name',
-                DB::raw('COALESCE(SUM(CASE WHEN orders.status = "completed"
-                    AND orders.updated_at BETWEEN "' . $start . '" AND "' . $end . '"
-                    THEN order_items.price * order_items.quantity ELSE 0 END), 0) as total')
-            )
-            ->groupBy('shops.user_id', 'shops.name')
-            ->orderByDesc('total')
-            ->limit(10)
-            ->get();
+    ->leftJoin('users', 'shops.user_id', '=', 'users.id')
+    ->leftJoin('order_items', 'order_items.seller_id', '=', 'users.id')
+    ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')
+    ->select(
+        'shops.user_id as id',
+        'shops.name as shop_name',
+        DB::raw('COALESCE(SUM(CASE 
+            WHEN orders.status = "completed"
+            AND orders.updated_at BETWEEN "' . $start . '" AND "' . $end . '"
+            THEN orders.total_price ELSE 0 END), 0) as total')
+    )
+    ->groupBy('shops.user_id', 'shops.name')
+    ->orderByDesc('total')
+    ->limit(10)
+    ->get();
+
 
         // Nếu ít hơn 10 shop, thêm shop active khác vào danh sách (doanh thu = 0)
         if ($data->count() < 10) {

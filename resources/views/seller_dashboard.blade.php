@@ -74,6 +74,36 @@
 @php
     $shop = \App\Models\Shop::where('user_id', auth()->id())->first();
 @endphp
+@php
+    $year = request()->get('year', now()->year);
+    $sellerId = auth()->id();
+
+    $sellerOrders = \App\Models\Order::whereHas('items', function($q) use ($sellerId) {
+        $q->where('seller_id', $sellerId);
+    })->whereYear('created_at', $year)
+      ->where('status', 'completed')
+      ->with(['items' => function($q) use ($sellerId) { $q->where('seller_id', $sellerId); }])
+      ->get();
+
+    $totalOrders  = $sellerOrders->count();
+    $soldCount    = $sellerOrders->flatMap(fn($o) => $o->items ?? collect())->sum('quantity');
+    $totalRevenue = $sellerOrders->sum('total_price');
+
+    // Doanh thu theo tháng
+    $revenues = [];
+    for ($m = 1; $m <= 12; $m++) {
+        $revenues[$m] = \App\Models\Order::whereHas('items', function($q) use ($sellerId) {
+            $q->where('seller_id', $sellerId);
+        })->whereYear('created_at', $year)
+          ->whereMonth('created_at', $m)
+          ->where('status', 'completed')
+          ->sum('total_price');
+    }
+
+    // ✅ Tạo mảng đã “chuẩn hoá” để đưa vào @json (tránh biểu thức phức tạp trong @json)
+    $revenuesChart = array_values($revenues ?: array_fill(0, 12, 0));
+@endphp
+
     <div class="topbar">
         <div class="left">
             <div class="brand">
@@ -108,6 +138,17 @@
                     <li><a href="#" data-view="voucher_add">Thêm voucher</a></li>
                 </ul>
             </div>
+            <div class="side-section" style="margin-top:16px;">
+                <div class="side-title" style="font-weight:700;">Thống Kê</div>
+                <ul class="menu">
+                    <li>
+                        <a href="#" data-view="revenue_report" style="font-weight:700; color:#111827;">
+                            💰 Thống kê doanh thu
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
             <div class="side-section" style="margin-top:16px;">
                 <div class="side-title">Tài Khoản</div>
                 <ul class="menu">
@@ -221,17 +262,29 @@
         </div>
         @endif
         <div class="card" style="margin-bottom:16px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                <h2 style="margin:0;">Quản lý tất cả sản phẩm</h2>
-                <div style="display:flex; gap:8px;">
-                    <input id="productsSearch" type="text" placeholder="Tìm kiếm theo tên..."
-                        style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; width:260px;">
-                    <a href="#" onclick="event.preventDefault(); navigate('product_add')"
-                    style="text-decoration:none; padding:10px 14px; border-radius:8px; background:#2563eb; border:1px solid #2563eb; color:#fff; display:flex; align-items:center;">
-                    + Thêm sản phẩm
-                    </a>
-                </div>
-            </div>
+           <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <h2 style="margin:0;">Quản lý tất cả sản phẩm</h2>
+    <div style="display:flex; align-items:center; gap:8px;">
+        <!-- 🔍 Tìm kiếm -->
+        <input id="productsSearch" type="text" placeholder="Tìm kiếm theo tên..."
+            style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; width:220px;">
+
+        <!-- 🏷️ Lọc trạng thái -->
+        <select id="statusFilter" style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px;">
+            <option value="">Tất cả trạng thái</option>
+            <option value="pending">Chờ duyệt</option>
+            <option value="in_stock">Còn hàng</option>
+            <option value="rejected">Bị từ chối</option>
+        </select>
+
+        <!-- ➕ Nút thêm sản phẩm -->
+        <a href="#" onclick="event.preventDefault(); navigate('product_add')"
+            style="text-decoration:none; padding:10px 14px; border-radius:8px; background:#2563eb; border:1px solid #2563eb; color:#fff; display:flex; align-items:center;">
+            + Thêm sản phẩm
+        </a>
+    </div>
+</div>
+
         </div>
         <style>
             #productsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; }
@@ -244,77 +297,101 @@
         </style>
         <div class="grid" id="productsGrid">
             @foreach($sellerProducts as $p)
-                <?php
-                    $imgs = is_array($p->images) ? $p->images : [];
-                    $img = count($imgs) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
-                    $statusColor = match($p->status){
-                        'in_stock' => '#16a34a',
-                        'out_of_stock' => '#dc2626',
-                        'discontinued' => '#6b7280',
-                        default => '#f59e0b',
-                    };
-                    $statusText = match($p->status){
-                        'in_stock' => 'Còn hàng',
-                        'out_of_stock' => 'Hết hàng',
-                        'discontinued' => 'Ngừng kinh doanh',
-                        default => 'Chờ duyệt',
-                    };
-                ?>
-                <form method="post" action="{{ route('products.update', $p->id) }}" class="product-form"
-                    class="card product-card" style="width:100%;">
-                    @csrf
-                    @method('PUT')
-                    <div style="display:flex; align-items:flex-start; gap:20px; padding:20px;">
-                        <img src="{{ $img }}" alt="{{ $p->name }}"
-                            style="width:150px; height:150px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb;">
-                       
-                        <div style="flex:1;">
-                            <!-- Tên + Trạng thái -->
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                                <h3 style="margin:0; font-size:20px; font-weight:600;">
-                                    <span class="view-text">{{ $p->name }}</span>
-                                    <input class="edit-input" type="text" name="name" value="{{ $p->name }}">
-                                </h3>
-                                <span style="font-size:14px; padding:6px 12px; border-radius:999px; background:{{ $statusColor }}20; color:{{ $statusColor }}; border:1px solid {{ $statusColor }}33;">
-                                    {{ $statusText }}
-                                </span>
-                            </div>
-                            <!-- Đã bán + Tồn kho -->
-                            <div style="display:flex; gap:16px; margin-bottom:16px;">
-                                <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
-                                    <div style="font-weight:700; font-size:18px;">{{ $p->sold_quantity }}</div>
-                                    <div style="font-size:14px; color:#6b7280;">Đã bán</div>
-                                </div>
-                                <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
-                                    <div class="view-text" style="font-weight:700; font-size:18px;">{{ $p->quantity }}</div>
-                                    <input class="edit-input" type="number" name="quantity" value="{{ $p->quantity }}">
-                                    <div style="font-size:14px; color:#6b7280;">Tồn kho</div>
-                                </div>
-                            </div>
-                            <!-- Giá -->
-                            <div style="margin-bottom:16px; font-weight:800; color:#16a34a;">
-                                <span class="view-text">{{ number_format($p->price, 0, ',', '.') }} VND</span>
-                                <input class="edit-input" type="number" name="price" value="{{ $p->price }}">
-                            </div>
-                            <!-- Loại -->
-                            <div style="margin-bottom:16px; font-size:14px; color:#6b7280;">
-                                Loại sản phẩm:
-                                <span class="view-text" style="color:#111827; font-weight:600;">{{ $p->category?->name ?? '—' }}</span>
-                                <input class="edit-input" type="text" name="category" value="{{ $p->category?->name ?? '' }}">
-                            </div>
-                            <!-- Buttons -->
-                            <div style="display:flex; justify-content:flex-end; gap:12px;">
-                                <button type="button" class="btn red">Xóa</button>
-                                <button type="button" class="btn green btn-edit">Chỉnh sửa</button>
-                                <div class="save-bar">
-                                    <button type="submit" class="btn primary">Lưu</button>
-                                    <button type="button" class="btn btn-cancel">Hủy</button>
-                                </div>
-                            </div>
-                        </div>
+    <?php
+        $imgs = is_array($p->images) ? $p->images : [];
+        $img = count($imgs) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
+        $statusColor = match($p->status){
+            'in_stock' => '#16a34a',
+            'out_of_stock' => '#dc2626',
+            'discontinued' => '#6b7280',
+            'pending' => '#f59e0b',
+            'rejected' => '#ef4444',
+            default => '#6b7280',
+        };
+        $statusText = match($p->status){
+            'in_stock' => 'Còn hàng',
+            'out_of_stock' => 'Hết hàng',
+            'discontinued' => 'Ngừng kinh doanh',
+            'pending' => 'Chờ duyệt',
+            'rejected' => 'Bị từ chối',
+            default => 'Không xác định',
+        };
+    ?>
+    <form method="post" 
+      action="{{ route('products.update', $p->id) }}" 
+      class="card product-card product-form" 
+      data-status="{{ $p->status }}" 
+      style="width:100%;">
+
+        @csrf
+        @method('PUT')
+        <div style="display:flex; align-items:flex-start; gap:20px; padding:20px;">
+            <img src="{{ $img }}" alt="{{ $p->name }}"
+                style="width:150px; height:150px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb;">
+            
+            <div style="flex:1;">
+                <!-- 🧾 Tên + Trạng thái -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                    <h3 style="margin:0; font-size:20px; font-weight:600;">
+                        <span class="view-text">{{ $p->name }}</span>
+                        <input class="edit-input" type="text" name="name" value="{{ $p->name }}">
+                    </h3>
+                    <span style="font-size:14px; padding:6px 12px; border-radius:999px; background:{{ $statusColor }}20; color:{{ $statusColor }}; border:1px solid {{ $statusColor }}33;">
+                        {{ $statusText }}
+                    </span>
+                </div>
+
+                <!-- 🏷️ Trạng thái sản phẩm -->
+                <div style="margin-bottom:16px;">
+                    <label style="font-weight:600; color:#6b7280;">Trạng thái:</label>
+                    <span class="view-text" style="margin-left:6px; color:#111827; font-weight:600;">{{ $statusText }}</span>
+                    <select class="edit-input" name="status" style="padding:8px 10px; border:1px solid #d1d5db; border-radius:8px;">
+                        <option value="pending" {{ $p->status=='pending'?'selected':'' }}>Chờ duyệt</option>
+                        <option value="in_stock" {{ $p->status=='in_stock'?'selected':'' }}>Còn hàng</option>
+                        <option value="rejected" {{ $p->status=='rejected'?'selected':'' }}>Bị từ chối</option>
+                    </select>
+                </div>
+
+                <!-- 📦 Đã bán + Tồn kho -->
+                <div style="display:flex; gap:16px; margin-bottom:16px;">
+                    <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
+                        <div style="font-weight:700; font-size:18px;">{{ $p->sold_quantity }}</div>
+                        <div style="font-size:14px; color:#6b7280;">Đã bán</div>
                     </div>
-                </form>
-            @endforeach
+                    <div style="flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
+                        <div class="view-text" style="font-weight:700; font-size:18px;">{{ $p->quantity }}</div>
+                        <input class="edit-input" type="number" name="quantity" value="{{ $p->quantity }}">
+                        <div style="font-size:14px; color:#6b7280;">Tồn kho</div>
+                    </div>
+                </div>
+
+                <!-- 💰 Giá -->
+                <div style="margin-bottom:16px; font-weight:800; color:#16a34a;">
+                    <span class="view-text">{{ number_format($p->price, 0, ',', '.') }} VND</span>
+                    <input class="edit-input" type="number" name="price" value="{{ $p->price }}">
+                </div>
+
+                <!-- 🏷️ Loại -->
+                <div style="margin-bottom:16px; font-size:14px; color:#6b7280;">
+                    Loại sản phẩm:
+                    <span class="view-text" style="color:#111827; font-weight:600;">{{ $p->category?->name ?? '—' }}</span>
+                    <input class="edit-input" type="text" name="category" value="{{ $p->category?->name ?? '' }}">
+                </div>
+
+                <!-- 🧭 Buttons -->
+                <div style="display:flex; justify-content:flex-end; gap:12px;">
+                    <!-- ❌ ĐÃ XÓA NÚT XÓA -->
+                    <button type="button" class="btn green btn-edit">Chỉnh sửa</button>
+                    <div class="save-bar">
+                        <button type="submit" class="btn primary">Lưu</button>
+                        <button type="button" class="btn btn-cancel">Hủy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+@endforeach
+
         </div>
     </template>
     <template id="tpl-product-add">
@@ -611,6 +688,85 @@
     </form>
 </div>
 </template>
+<template id="tpl-revenue-report">
+    @if($shop && $shop->status === 'suspended')
+    <div class="suspended-alert">
+        <h3 style="margin:0 0 8px 0; font-weight:600;">Shop đã bị đình chỉ</h3>
+        <p style="margin:0; font-size:14px;">Shop của bạn đã bị đình chỉ hoạt động. Vui lòng liên hệ với bộ phận hỗ trợ để được giải quyết. Các chức năng quản lý có thể bị hạn chế.</p>
+    </div>
+    @endif
+    <div class="card" style="margin-bottom:20px;">
+        <h2 style="margin-bottom:16px;">📊 Thống kê doanh thu</h2>
+        <!-- Bộ lọc năm (sử dụng $year đã define) -->
+        <form method="GET" style="margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+            <label for="yearSelect">Năm:</label>
+            <select id="yearSelect" name="year" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db;">
+                @for($y = now()->year; $y >= now()->year - 5; $y--)
+                    <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
+                @endfor
+            </select>
+            <button type="submit" class="btn primary" style="padding:8px 12px;">Áp dụng</button>
+        </form>
+        <!-- 3 thẻ thống kê (với fallback) -->
+        <div class="grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom:24px;">
+            <div class="metric">
+                <h3>🧾 Số đơn hoàn tất</h3>
+                <div class="val">{{ $totalOrders ?? 0 }}</div>
+            </div>
+            <div class="metric">
+                <h3>📦 Sản phẩm đã bán</h3>
+                <div class="val">{{ $soldCount ?? 0 }}</div>
+            </div>
+            <div class="metric">
+                <h3>💰 Tổng doanh thu</h3>
+                <div class="val" style="color:#16a34a;">{{ number_format($totalRevenue ?? 0, 0, ',', '.') }} ₫</div>
+            </div>
+        </div>
+        <!-- Biểu đồ doanh thu -->
+        <canvas id="chartRevenue" height="120"></canvas>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    (function(){
+        const ctx = document.getElementById('chartRevenue');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'],
+                    datasets: [{
+                        label: 'Doanh thu (₫)',
+                        data: @json(array_values($revenues ?? [0,0,0,0,0,0,0,0,0,0,0,0])),  // Fallback mảng 12 số 0
+                        backgroundColor: '#2563eb',
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => new Intl.NumberFormat('vi-VN').format(v) + ' ₫'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => new Intl.NumberFormat('vi-VN').format(ctx.raw) + ' ₫'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        // Khi đổi năm -> submit form để reload (thay vì JS change, vì cần server compute)
+        document.getElementById('yearSelect')?.addEventListener('change', e => {
+            e.target.closest('form').submit();
+        });
+    })();
+    </script>
+</template>
     <script>
 const shopStatus = @json($shop ? $shop->status : 'active');
 (function(){
@@ -640,6 +796,7 @@ const shopStatus = @json($shop ? $shop->status : 'active');
             'account_personal': 'tpl-account-personal',
             'vouchers': 'tpl-vouchers',
             'voucher_add': 'tpl-voucher-add',
+             'revenue_report': 'tpl-revenue-report',
         };
         show(map[view] || 'tpl-orders-all');
 
@@ -713,32 +870,35 @@ const shopStatus = @json($shop ? $shop->status : 'active');
             });
         }
     }
-    function bindProductsSearch(){
-        var input = document.getElementById('productsSearch');
-        var grid = document.getElementById('productsGrid');
-        if (!input || !grid) {
-            console.error('Products search input or grid not found');
-            return;
-        }
-        input.addEventListener('input', function(){
-            var q = input.value.trim().toLowerCase();
-            grid.querySelectorAll('.card').forEach(function(card){
-                var name = card.getAttribute('data-name') || '';
-                card.style.display = (!q || name.indexOf(q) !== -1) ? '' : 'none';
-            });
-        });
-        // Bind submit for update products
-        const updateForms = document.querySelectorAll('.product-form');
-        updateForms.forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                if (shopStatus === 'suspended') {
-                    e.preventDefault();
-                    alert('Shop đã bị đình chỉ. Không thể sửa sản phẩm.');
-                    return false;
-                }
+    function bindProductsSearch() {
+    const input = document.getElementById('productsSearch');
+    const grid = document.getElementById('productsGrid');
+    const statusFilter = document.getElementById('statusFilter');
+    if (!grid) return;
+
+    // 🔍 Lọc theo tên sản phẩm
+    if (input) {
+        input.addEventListener('input', function () {
+            const q = input.value.trim().toLowerCase();
+            grid.querySelectorAll('.card.product-card').forEach(card => {
+                const name = (card.querySelector('h3 span.view-text')?.textContent || '').toLowerCase();
+                card.style.display = (!q || name.includes(q)) ? '' : 'none';
             });
         });
     }
+
+    // 🏷️ Lọc theo trạng thái
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function () {
+            const selected = statusFilter.value.trim().toLowerCase();
+            grid.querySelectorAll('.card.product-card').forEach(card => {
+                const status = (card.dataset.status || '').toLowerCase();
+                card.style.display = (!selected || status === selected) ? '' : 'none';
+            });
+        });
+    }
+} // <-- BỔ SUNG DẤU ĐÓNG
+
     function bindAccountPersonal(){
         var tabs = document.querySelectorAll('.tab');
         tabs.forEach(function(btn){
@@ -1353,6 +1513,7 @@ function bindVoucherAdd() {
 }
 })();
 // 🔒 KHÓA CHỨC NĂNG KHI SHOP ĐANG BỊ ĐÌNH CHỈ
+// 🔒 KHÓA CHỨC NĂNG KHI SHOP ĐANG BỊ ĐÌNH CHỈ
 if (shopStatus === 'suspended') {
     alert('⚠️ Shop của bạn hiện đang bị đình chỉ. Một số chức năng như thêm, sửa, xóa sản phẩm hoặc voucher đã bị giới hạn.');
 
@@ -1420,18 +1581,16 @@ if (shopStatus === 'suspended') {
     disableAccount();
     disableShopForm();
 }
+
 // 🚫 Chặn riêng nút "Thêm sản phẩm" và "Thêm voucher" khi shop bị đình chỉ
 document.addEventListener('click', function(e) {
-    // Nếu shop đang bị đình chỉ
     if (shopStatus === 'suspended') {
-        // Kiểm tra nút "Thêm sản phẩm"
         if (e.target.closest('a[href*="/seller/products/create"]') || e.target.closest('button.add-product-btn')) {
             e.preventDefault();
             alert('🚫 Shop của bạn đang bị đình chỉ — không thể thêm sản phẩm mới.');
             return;
         }
 
-        // Kiểm tra nút "Thêm voucher"
         if (e.target.closest('a[href*="/seller/vouchers/create"]') || e.target.closest('button.add-voucher-btn')) {
             e.preventDefault();
             alert('🚫 Shop của bạn đang bị đình chỉ — không thể thêm voucher mới.');
@@ -1439,6 +1598,30 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+
+// 🟦 Lọc theo trạng thái (đặt trong phạm vi global, không lỗi biến)
+// 🟦 Lọc theo trạng thái (chính xác theo data-status)
+document.addEventListener('DOMContentLoaded', function() {
+    const statusFilter = document.getElementById('statusFilter');
+    const grid = document.getElementById('productsGrid');
+
+    if (statusFilter && grid) {
+        statusFilter.addEventListener('change', function() {
+            const selected = statusFilter.value.trim().toLowerCase();
+
+            grid.querySelectorAll('.card.product-card').forEach(function(card) {
+                const status = (card.dataset.status || '').toLowerCase();
+
+                if (!selected || status === selected) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+
 
 </script>
 </body>
