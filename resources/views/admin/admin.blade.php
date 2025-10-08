@@ -98,6 +98,16 @@
           <!-- Quản lý đơn hàng -->
           <li><a href="{{ route('admin.orders.index') }}">📑 Quản lý đơn hàng</a></li>
 
+          <!-- Quản lý voucher -->
+          <li class="has-submenu">
+            <a href="#">🎟️ Quản lý voucher ▾</a>
+            <ul class="submenu">
+              <li><a href="{{ route('admin.vouchers.index') }}">📋 Danh sách voucher</a></li>
+              <li><a href="{{ route('admin.vouchers.create') }}">➕ Thêm voucher mới</a></li>
+            </ul>
+          </li>
+
+
           <!-- ✅ Thống kê có submenu -->
           <li class="has-submenu">
             <a href="#">📊 Thống kê ▾</a>

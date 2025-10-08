@@ -88,10 +88,10 @@
                 <div class="side-title">Quản Lý Đơn Hàng</div>
                 <ul class="menu">
                     <li><a href="#" data-view="orders_all">Tất cả</a></li>
-                    <li><a href="#" data-view="orders_bulk">Giao Hàng Loạt</a></li>
+                    
                     <li><a href="#" data-view="handover">Bàn Giao Đơn Hàng</a></li>
                     <li><a href="#" data-view="returns">Trả hàng/Hoàn tiền/Hủy</a></li>
-                    <li><a href="#" data-view="shipping">Cài Đặt Vận Chuyển</a></li>
+                    
                 </ul>
             </div>
             <div class="side-section" style="margin-top:16px;">
@@ -642,6 +642,10 @@ const shopStatus = @json($shop ? $shop->status : 'active');
             'voucher_add': 'tpl-voucher-add',
         };
         show(map[view] || 'tpl-orders-all');
+
+
+        history.pushState({}, '', `/seller/${view.replace('_', '/')}`);
+
         setTimeout(function(){
             if (view === 'product_add') bindCategory();
             if (view === 'products_all') bindProductsSearch();

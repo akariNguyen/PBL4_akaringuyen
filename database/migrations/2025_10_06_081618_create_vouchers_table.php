@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('vouchers', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('shop_id'); // shop_id là user_id của shop
+            $table->unsignedBigInteger('shop_id')->nullable()->comment('NULL = voucher toàn hệ thống, != NULL = voucher của shop');
             $table->string('code')->unique();
             $table->integer('discount_amount')->default(0);
             $table->date('expiry_date');
