@@ -11,42 +11,68 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class CheckoutController extends Controller
 {
     /**
+     * 🧹 Tự động xóa voucher hết hạn mỗi khi gọi controller
+     */
+    public function __construct()
+    {
+        Voucher::where('expiry_date', '<', now())->delete();
+    }
+
+    /**
      * 🛒 Hiển thị checkout cho 1 sản phẩm (Mua ngay)
      */
     public function index($productId)
-{
-    $product = Product::findOrFail($productId);
+    {
+        $product = Product::findOrFail($productId);
 
-    $cart = [
-        'product_id' => $productId,
-        'quantity'   => request()->input('quantity', 1),
-    ];
-    Session::put('cart', $cart);
+        $cart = [
+            'product_id' => $productId,
+            'quantity'   => request()->input('quantity', 1),
+        ];
+        Session::put('cart', $cart);
 
-    $totalPrice   = $product->price * $cart['quantity'];
-    $shippingFee  = 38000;
-    $discount     = 0; // chưa chọn voucher thì chưa giảm
-    $finalTotal   = $totalPrice + $shippingFee - $discount;
+        $totalPrice   = $product->price * $cart['quantity'];
+        $shippingFee  = 38000;
+        $discount     = 0;
+        $finalTotal   = $totalPrice + $shippingFee;
 
-    $addresses      = Auth::check() ? Auth::user()->addresses()->latest()->get() : collect();
-    $defaultAddress = Auth::check() ? Auth::user()->defaultAddress()->first() : null;
+        $addresses      = Auth::check() ? Auth::user()->addresses()->latest()->get() : collect();
+        $defaultAddress = Auth::check() ? Auth::user()->defaultAddress()->first() : null;
 
-    return view('checkout', compact(
-        'product',
-        'cart',
-        'totalPrice',
-        'shippingFee',
-        'discount',
-        'finalTotal',
-        'addresses',
-        'defaultAddress'
-    ));
-}
+        // ✅ Voucher riêng của shop
+        $shopVouchers = Voucher::where('shop_id', $product->seller_id)
+            ->where('status', 'active')
+            ->where('expiry_date', '>=', now())
+            ->get();
 
+        // ✅ Voucher toàn hệ thống (admin)
+        $adminVouchers = Voucher::whereNull('shop_id')
+            ->where('status', 'active')
+            ->where('expiry_date', '>=', now())
+            ->get();
+
+        $vouchers = [
+            'shop' => $shopVouchers,
+            'admin' => $adminVouchers,
+        ];
+
+        return view('checkout', compact(
+            'product',
+            'cart',
+            'totalPrice',
+            'shippingFee',
+            'discount',
+            'finalTotal',
+            'addresses',
+            'defaultAddress',
+            'vouchers'
+        ));
+    }
 
     /**
      * 💾 Lưu đơn hàng (Mua ngay hoặc từ giỏ hàng)
@@ -54,7 +80,6 @@ class CheckoutController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'payment_method' => 'required|in:shopeepay,vcb,google_pay,napas,credit_card',
             'address'        => 'nullable|string|max:255',
             'address_id'     => 'nullable|integer',
         ]);
@@ -88,8 +113,23 @@ class CheckoutController extends Controller
 
             $totalPrice  = $product->price * $cart['quantity'];
             $shippingFee = 38000;
-            $discount    = 10000;
-            $finalTotal  = $totalPrice + $shippingFee - $discount;
+            $discount    = 0;
+
+            // ✅ Áp dụng voucher nếu có
+            if ($request->filled('voucher_shop')) {
+                $v = Voucher::find($request->input('voucher_shop'));
+                if ($v && $v->expiry_date >= now() && $v->status === 'active') {
+                    $discount += $v->discount_amount;
+                }
+            }
+            if ($request->filled('voucher_admin')) {
+                $v = Voucher::find($request->input('voucher_admin'));
+                if ($v && $v->expiry_date >= now() && $v->status === 'active') {
+                    $discount += $v->discount_amount;
+                }
+            }
+
+            $finalTotal = max($totalPrice + $shippingFee - $discount, 0);
 
             $order = Order::create([
                 'user_id'     => Auth::id(),
@@ -117,7 +157,6 @@ class CheckoutController extends Controller
         elseif ($request->has('items')) {
             $user = Auth::user();
             $cart = $user->cart()->with('items.product.seller.shop')->first();
-
             $selectedItems = $cart->items->whereIn('product_id', $request->input('items'));
             if ($selectedItems->isEmpty()) {
                 return redirect()->route('cart.my')->withErrors(['cart' => 'Không tìm thấy sản phẩm để thanh toán.']);
@@ -125,8 +164,6 @@ class CheckoutController extends Controller
 
             // ✅ Nhóm sản phẩm theo shop
             $groupedItems = $selectedItems->groupBy(fn($i) => optional($i->product->seller->shop)->user_id ?? 0);
-
-            // ✅ Xử lý voucher theo từng shop
             $selectedVouchers = $request->input('vouchers', []);
             $shippingFee = 38000;
             $finalTotal = 0;
@@ -145,7 +182,6 @@ class CheckoutController extends Controller
                 $finalTotal += $shopTotal - $discount + $shippingFee;
             }
 
-            // ✅ Tạo đơn hàng
             $order = Order::create([
                 'user_id'     => Auth::id(),
                 'total_price' => $finalTotal,
@@ -153,7 +189,6 @@ class CheckoutController extends Controller
                 'status'      => 'pending',
             ]);
 
-            // ✅ Thêm từng item vào OrderItem
             foreach ($selectedItems as $item) {
                 OrderItem::create([
                     'order_id'     => $order->id,
@@ -184,60 +219,45 @@ class CheckoutController extends Controller
      */
     public function fromCart(Request $request)
     {
-        Log::info('Checkout from cart request', [
-            'user_id'        => Auth::id(),
-            'selected_items' => $request->input('items'),
-        ]);
-
         $user = Auth::user();
-        if (!$user) {
-            return redirect()->route('login');
-        }
+        if (!$user) return redirect()->route('login');
 
         $cart = $user->cart()->with('items.product.seller.shop')->first();
-        if (!$cart) {
-            return redirect()->route('cart.my')->withErrors(['cart' => 'Giỏ hàng trống.']);
-        }
+        if (!$cart) return redirect()->route('cart.my')->withErrors(['cart' => 'Giỏ hàng trống.']);
 
         $items = (array) $request->input('items', []);
-        if (empty($items)) {
-            return redirect()->route('cart.my')->withErrors(['cart' => 'Bạn chưa chọn sản phẩm nào để thanh toán.']);
-        }
+        if (empty($items)) return redirect()->route('cart.my')->withErrors(['cart' => 'Bạn chưa chọn sản phẩm nào để thanh toán.']);
 
         $selectedItems = $cart->items->whereIn('product_id', $items);
-        if ($selectedItems->isEmpty()) {
-            return redirect()->route('cart.my')->withErrors(['cart' => 'Không tìm thấy sản phẩm để thanh toán.']);
-        }
+        if ($selectedItems->isEmpty()) return redirect()->route('cart.my')->withErrors(['cart' => 'Không tìm thấy sản phẩm để thanh toán.']);
 
         // ✅ Nhóm theo shop
-        $grouped = $selectedItems
-            ->groupBy(fn($i) => optional($i->product->seller->shop)->user_id ?? 0)
-            ->sortKeys();
+        $grouped = $selectedItems->groupBy(fn($i) => optional($i->product->seller->shop)->user_id ?? 0)->sortKeys();
+        $shops = $selectedItems->map(fn($i) => $i->product->seller->shop)->filter()->keyBy('user_id');
 
-        // ✅ Lấy danh sách shop
-        $shops = $selectedItems
-            ->map(fn($i) => $i->product->seller->shop)
-            ->filter()
-            ->keyBy('user_id');
-
-        // ✅ Lấy tất cả voucher khả dụng của từng shop
+        // ✅ Voucher shop
         $shopIds = $grouped->keys();
-        $vouchers = Voucher::whereIn('shop_id', $shopIds)
-            ->where('expiry_date', '>', now())
+        $shopVouchers = Voucher::whereIn('shop_id', $shopIds)
+            ->where('expiry_date', '>=', now())
             ->where('status', 'active')
             ->get()
-            ->groupBy('shop_id'); // -> mỗi shop có thể có nhiều voucher
+            ->groupBy('shop_id');
+
+        // ✅ Voucher admin
+        $adminVouchers = Voucher::whereNull('shop_id')
+            ->where('expiry_date', '>=', now())
+            ->where('status', 'active')
+            ->get();
 
         $addresses      = $user->addresses()->latest()->get();
         $defaultAddress = $user->defaultAddress()->first();
 
-        // Tổng tạm tính (chưa trừ voucher)
         $shippingFee = 38000;
         $finalTotal  = $selectedItems->sum(fn($i) => $i->product->price * $i->quantity) + $shippingFee;
 
         return view('checkout-multiple', compact(
-            'grouped', 'shops', 'vouchers', 'addresses', 'defaultAddress',
-            'shippingFee', 'finalTotal'
+            'grouped', 'shops', 'shopVouchers', 'adminVouchers',
+            'addresses', 'defaultAddress', 'shippingFee', 'finalTotal'
         ));
     }
 }

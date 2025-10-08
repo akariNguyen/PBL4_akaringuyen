@@ -16,7 +16,7 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
         body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--text); }
         .container { max-width: 850px; margin: 20px auto; padding: 25px; background: #fff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
-        .address-section, .product-summary, .payment-section { margin-bottom: 25px; }
+        .address-section, .product-summary { margin-bottom: 25px; }
         h3 { color: var(--primary); margin-bottom: 10px; }
 
         .address-input, .address-select, .voucher-select {
@@ -42,7 +42,7 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
 
         .product-header { font-weight: 600; color: var(--primary); border-bottom: 2px solid var(--primary); }
 
-        .voucher-section h4 { color: var(--primary); margin-bottom: 5px; }
+        .voucher-section h4, .voucher-section h3 { color: var(--primary); margin-bottom: 5px; }
 
         .total-row { display: flex; justify-content: space-between; margin: 10px 0; }
         .total-row.total { font-weight: 700; font-size: 18px; border-top: 1px solid #eee; padding-top: 10px; }
@@ -104,6 +104,7 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
                     $shop = $shops[$shopId] ?? null;
                     $shopSubtotal = $items->sum(fn($i) => $i->product->price * $i->quantity);
                     $shopTotal = $shopSubtotal + $shippingFee;
+                    $shopVoucherList = $shopVouchers[$shopId] ?? collect();
                 @endphp
 
                 <div class="shop-section">
@@ -124,15 +125,15 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
                         </div>
                     @endforeach
 
-                    {{-- 🎟️ Chọn Voucher --}}
+                    {{-- 🎟️ Voucher Shop --}}
                     <div class="voucher-section">
-                        <h4>🎟️ Chọn Voucher</h4>
-                        @if(isset($vouchers[$shopId]) && count($vouchers[$shopId]) > 0)
-                            <select name="vouchers[{{ $shopId }}]" class="voucher-select" data-shop="{{ $shopId }}">
+                        <h4>🎟️ Voucher Shop</h4>
+                        @if($shopVoucherList->isNotEmpty())
+                            <select name="vouchers[{{ $shopId }}]" class="voucher-select" data-type="shop" data-shop="{{ $shopId }}">
                                 <option value="">-- Không áp dụng voucher --</option>
-                                @foreach($vouchers[$shopId] as $v)
+                                @foreach($shopVoucherList as $v)
                                     <option value="{{ $v->id }}" data-discount="{{ $v->discount_amount }}">
-                                        {{ $v->code }} - Giảm đ{{ number_format($v->discount_amount, 0, ',', '.') }} (HSD: {{ $v->expiry_date->format('d/m/Y') }})
+                                        🏬 {{ $v->code }} - Giảm đ{{ number_format($v->discount_amount, 0, ',', '.') }} (HSD: {{ $v->expiry_date->format('d/m/Y') }})
                                     </option>
                                 @endforeach
                             </select>
@@ -140,11 +141,9 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
                             <p>Không có voucher nào khả dụng.</p>
                         @endif
                     </div>
-                    <p class="mb-1">
-                        <strong>Phí vận chuyển:</strong> 
-                        <span class="text-muted">{{ number_format($shippingFee, 0, ',', '.') }}₫</span>
-                    </p>
-                    {{-- Tổng shop sau giảm --}}
+
+                    <p><strong>Phí vận chuyển:</strong> {{ number_format($shippingFee, 0, ',', '.') }}₫</p>
+
                     <div class="total-row shop-total" id="shop-total-{{ $shopId }}">
                         <span>Tổng shop sau giảm:</span>
                         <strong data-base="{{ $shopTotal }}">đ{{ number_format($shopTotal, 0, ',', '.') }}</strong>
@@ -153,29 +152,27 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
             @endforeach
         </div>
 
-        {{-- Giao hàng --}}
+        {{-- 🌐 Voucher Toàn Hệ Thống --}}
+        <div class="voucher-section">
+            <h3>🌐 Voucher Toàn Hệ Thống </h3>
+            @if($adminVouchers->isNotEmpty())
+                <select name="admin_voucher" id="admin-voucher" class="voucher-select" data-type="admin">
+                    <option value="">-- Không áp dụng voucher toàn hệ thống --</option>
+                    @foreach($adminVouchers as $v)
+                        <option value="{{ $v->id }}" data-discount="{{ $v->discount_amount }}">
+                            🌐 {{ $v->code }} - Giảm đ{{ number_format($v->discount_amount, 0, ',', '.') }} (HSD: {{ $v->expiry_date->format('d/m/Y') }})
+                        </option>
+                    @endforeach
+                </select>
+            @else
+                <p>Không có voucher toàn hệ thống khả dụng.</p>
+            @endif
+        </div>
+
         <div class="shipping-info">
             📦 Vận chuyển: Nhận từ {{ $startShippingDate }} - {{ $endShippingDate }}
         </div>
 
-        {{-- Thanh toán --}}
-        <div class="payment-section">
-            <h3>Phương thức thanh toán</h3>
-            @foreach([
-                'shopeepay' => 'ShopeePay',
-                'vcb' => 'VCB (Số tài khoản: 52937)',
-                'google_pay' => 'Google Pay',
-                'napas' => 'Thẻ nội địa NAPAS',
-                'credit_card' => 'Trả góp bằng Thẻ Tín dụng'
-            ] as $value => $label)
-                <div class="payment-option">
-                    <input type="radio" name="payment_method" value="{{ $value }}" id="{{ $value }}" {{ $loop->first ? 'checked' : '' }}>
-                    <label for="{{ $value }}">{{ $label }}</label>
-                </div>
-            @endforeach
-        </div>
-
-        {{-- Tổng cộng toàn đơn --}}
         <div class="total-section">
             <div class="total-row total" id="final-total">
                 <span>Tổng thanh toán:</span>
@@ -187,28 +184,30 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
     </form>
 </div>
 
-{{-- 🧠 Script tính toán động --}}
 <script>
 document.querySelectorAll('.voucher-select').forEach(select => {
-    select.addEventListener('change', function() {
-        const shopId = this.dataset.shop;
-        const discount = parseInt(this.selectedOptions[0]?.dataset.discount || 0);
-        const totalRow = document.querySelector(`#shop-total-${shopId} strong`);
-        const base = parseInt(totalRow.dataset.base || 0);
-
-        const newTotal = Math.max(base - discount, 0);
-        totalRow.textContent = 'đ' + newTotal.toLocaleString('vi-VN');
-
-        updateFinalTotal();
-    });
+    select.addEventListener('change', updateTotals);
 });
 
-function updateFinalTotal() {
+function updateTotals() {
     let total = 0;
+
+    // Cập nhật từng shop
     document.querySelectorAll('.shop-total strong').forEach(el => {
-        const val = parseInt(el.textContent.replace(/[^\d]/g, '') || 0);
-        total += val;
+        const base = parseInt(el.dataset.base || 0);
+        const shopId = el.parentElement.id.replace('shop-total-', '');
+        const shopSelect = document.querySelector(`select[data-shop="${shopId}"]`);
+        const shopDiscount = parseInt(shopSelect?.selectedOptions[0]?.dataset.discount || 0);
+        const newTotal = Math.max(base - shopDiscount, 0);
+        el.textContent = 'đ' + newTotal.toLocaleString('vi-VN');
+        total += newTotal;
     });
+
+    // Giảm theo voucher admin
+    const adminSelect = document.querySelector('#admin-voucher');
+    const adminDiscount = parseInt(adminSelect?.selectedOptions[0]?.dataset.discount || 0);
+    total = Math.max(total - adminDiscount, 0);
+
     document.querySelector('#final-total strong').textContent = 'đ' + total.toLocaleString('vi-VN');
 }
 </script>

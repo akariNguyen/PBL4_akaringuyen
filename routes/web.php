@@ -149,5 +149,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         ->name('analytics.products');
 });
 
+// 🧾🎟️ ADMIN VOUCHER ROUTE MỚI
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('vouchers', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'index'])->name('vouchers.index');
+    Route::get('vouchers/create', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'create'])->name('vouchers.create');
+    Route::post('vouchers', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'store'])->name('vouchers.store');
+    Route::get('vouchers/{id}/edit', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'edit'])->name('vouchers.edit');
+    Route::put('vouchers/{id}', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'update'])->name('vouchers.update');
+    Route::delete('vouchers/{id}', [\App\Http\Controllers\Admin\AdminVoucherController::class, 'destroy'])->name('vouchers.destroy');
+});
 
 
