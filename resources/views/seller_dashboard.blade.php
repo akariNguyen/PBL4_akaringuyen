@@ -90,18 +90,21 @@
     $totalRevenue = $sellerOrders->sum('total_price');
 
     // Doanh thu theo tháng
+    // ✅ Giới hạn đến tháng hiện tại (chỉ thống kê tháng 1 -> tháng hiện tại)
+        // Doanh thu theo tháng
+    // ✅ Giới hạn đến tháng hiện tại (chỉ thống kê tháng 1 -> tháng hiện tại)
+    $currentMonth = ($year == now()->year) ? now()->month : 12;
     $revenues = [];
-    for ($m = 1; $m <= 12; $m++) {
+    for ($m = 1; $m <= $currentMonth; $m++) {
         $revenues[$m] = \App\Models\Order::whereHas('items', function($q) use ($sellerId) {
             $q->where('seller_id', $sellerId);
         })->whereYear('created_at', $year)
-          ->whereMonth('created_at', $m)
-          ->where('status', 'completed')
-          ->sum('total_price');
+        ->whereMonth('created_at', $m)
+        ->where('status', 'completed')
+        ->sum('total_price');
     }
-
-    // ✅ Tạo mảng đã “chuẩn hoá” để đưa vào @json (tránh biểu thức phức tạp trong @json)
-    $revenuesChart = array_values($revenues ?: array_fill(0, 12, 0));
+    // ✅ Mảng biểu đồ chỉ chứa tháng 1 -> tháng hiện tại (dùng $currentMonth thay vì 12)
+    $revenuesChart = array_values($revenues ?: array_fill(0, $currentMonth, 0));
 @endphp
 
     <div class="topbar">
@@ -142,7 +145,7 @@
                 <div class="side-title" style="font-weight:700;">Thống Kê</div>
                 <ul class="menu">
                     <li>
-                        <a href="#" data-view="revenue_report" style="font-weight:700; color:#111827;">
+                        <a href="#" data-view="revenue_report" style=" color:#111827;">
                             💰 Thống kê doanh thu
                         </a>
                     </li>
@@ -695,19 +698,25 @@
         <p style="margin:0; font-size:14px;">Shop của bạn đã bị đình chỉ hoạt động. Vui lòng liên hệ với bộ phận hỗ trợ để được giải quyết. Các chức năng quản lý có thể bị hạn chế.</p>
     </div>
     @endif
+
     <div class="card" style="margin-bottom:20px;">
         <h2 style="margin-bottom:16px;">📊 Thống kê doanh thu</h2>
-        <!-- Bộ lọc năm (sử dụng $year đã define) -->
-        <form method="GET" style="margin-bottom:20px; display:flex; align-items:center; gap:12px;">
-            <label for="yearSelect">Năm:</label>
-            <select id="yearSelect" name="year" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db;">
-                @for($y = now()->year; $y >= now()->year - 5; $y--)
-                    <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
-                @endfor
-            </select>
-            <button type="submit" class="btn primary" style="padding:8px 12px;">Áp dụng</button>
-        </form>
-        <!-- 3 thẻ thống kê (với fallback) -->
+
+        <!-- Bộ lọc năm -->
+        <!-- Bộ lọc năm -->
+<form id="yearForm" style="margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+    <label for="yearSelect">Năm:</label>
+    <select id="yearSelect" name="year"
+        style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db;">
+        @for($y = now()->year; $y >= now()->year - 5; $y--)
+            <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
+        @endfor
+    </select>
+</form>
+
+
+
+        <!-- Thống kê tổng quan -->
         <div class="grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom:24px;">
             <div class="metric">
                 <h3>🧾 Số đơn hoàn tất</h3>
@@ -719,54 +728,25 @@
             </div>
             <div class="metric">
                 <h3>💰 Tổng doanh thu</h3>
-                <div class="val" style="color:#16a34a;">{{ number_format($totalRevenue ?? 0, 0, ',', '.') }} ₫</div>
+                <div class="val" style="color:#16a34a;">
+                    {{ number_format($totalRevenue ?? 0, 0, ',', '.') }} ₫
+                </div>
             </div>
         </div>
+
         <!-- Biểu đồ doanh thu -->
-        <canvas id="chartRevenue" height="120"></canvas>
+        <!-- 🧩 Biểu đồ doanh thu -->
+<div class="card" style="padding:16px; height:380px;">
+    <canvas id="chartRevenue" style="width:100%; height:100%;"></canvas>
+</div>
+
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-    (function(){
-        const ctx = document.getElementById('chartRevenue');
-        if (ctx) {
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'],
-                    datasets: [{
-                        label: 'Doanh thu (₫)',
-                        data: @json(array_values($revenues ?? [0,0,0,0,0,0,0,0,0,0,0,0])),  // Fallback mảng 12 số 0
-                        backgroundColor: '#2563eb',
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: v => new Intl.NumberFormat('vi-VN').format(v) + ' ₫'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => new Intl.NumberFormat('vi-VN').format(ctx.raw) + ' ₫'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        // Khi đổi năm -> submit form để reload (thay vì JS change, vì cần server compute)
-        document.getElementById('yearSelect')?.addEventListener('change', e => {
-            e.target.closest('form').submit();
-        });
-    })();
-    </script>
+
+    <!-- Chart.js -->
+   
 </template>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script>
 const shopStatus = @json($shop ? $shop->status : 'active');
 (function(){
@@ -811,6 +791,7 @@ const shopStatus = @json($shop ? $shop->status : 'active');
             if (view === 'orders_all') bindOrders();
             if (view === 'vouchers') bindVouchers();
             if (view === 'voucher_add') bindVoucherAdd();
+            if (view === 'revenue_report') bindRevenueChart();
         }, 0);
     }
     function getParameterByName(name) {
@@ -1511,6 +1492,78 @@ function bindVoucherAdd() {
         }
     };
 }
+function bindRevenueChart() {
+    const ctx = document.getElementById('chartRevenue');
+    if (!ctx) return;
+
+    const yearSelect = document.getElementById('yearSelect');
+    let chartInstance = null;
+
+    // ✅ Hàm vẽ lại biểu đồ
+    const renderChart = (revenues, year) => {
+        if (chartInstance) chartInstance.destroy();
+
+        const months = Array.from({length: revenues.length}, (_, i) => 'T' + (i + 1));
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: `Doanh thu ${year}`,
+                    data: revenues,
+                    backgroundColor: '#2563eb',
+                    borderRadius: 6,
+                    barThickness: 'flex'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: 10 },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => new Intl.NumberFormat('vi-VN').format(v) + ' ₫'
+                        }
+                    },
+                    x: { grid: { display: false } }
+                },
+                plugins: {
+    datalabels: {
+        anchor: 'end',          // điểm neo ở đỉnh cột
+        align: 'end',           // căn phía trên đỉnh
+        offset: -6,             // đẩy lên cao 6px để tách khỏi cột
+        color: '#111',
+        font: { weight: '600', size: 13 },
+        formatter: v => v > 0 ? new Intl.NumberFormat('vi-VN').format(v) + ' ₫' : ''
+    }
+}
+
+            },
+            plugins: [ChartDataLabels]
+        });
+    };
+
+    // ✅ Lần đầu vẽ theo dữ liệu Blade render sẵn
+    const revenuesBlade = {!! json_encode($revenuesChart ?? []) !!};
+    renderChart(revenuesBlade, {{ $year }});
+
+    // ✅ Khi chọn năm khác → chỉ gọi API JSON → update chart
+    if (yearSelect && !yearSelect.dataset.bound) {
+        yearSelect.dataset.bound = 'true';
+        yearSelect.addEventListener('change', e => {
+            const year = e.target.value;
+            fetch(`/seller/revenue/json?year=${year}`)
+                .then(res => res.json())
+                .then(data => {
+                    renderChart(data.revenues, data.year);
+                });
+        });
+    }
+}
+
 })();
 // 🔒 KHÓA CHỨC NĂNG KHI SHOP ĐANG BỊ ĐÌNH CHỈ
 // 🔒 KHÓA CHỨC NĂNG KHI SHOP ĐANG BỊ ĐÌNH CHỈ
@@ -1624,5 +1677,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 </script>
+
 </body>
 </html>

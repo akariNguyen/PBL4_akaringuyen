@@ -183,7 +183,7 @@ public function resubmit(Request $request)
     }
 
     // --- Đăng xuất người dùng ---
-    auth()->logout();
+    auth()->logout();   
 
     // --- Quay về trang đăng nhập kèm thông báo ---
     return redirect()->route('login')->with('success', '✅ Đã gửi yêu cầu thành công! Vui lòng đăng nhập lại sau khi shop được duyệt.');

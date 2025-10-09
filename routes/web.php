@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminShopController;
+use App\Http\Controllers\SellerRevenueController;
 
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
@@ -111,6 +112,15 @@ Route::middleware(['auth'])->prefix('seller')->name('seller.')->group(function (
     Route::put('/vouchers/{id}', [VoucherController::class, 'update'])->name('vouchers.update');  // ✏️ Cập nhật
     Route::delete('/vouchers/{id}', [VoucherController::class, 'destroy'])->name('vouchers.destroy'); // 🗑️ Xóa
     Route::get('/vouchers/json', [VoucherController::class, 'listJson'])->name('vouchers.json');
+    // 📈 Thống kê doanh thu người bán
+Route::get('/revenue/report', [SellerRevenueController::class, 'index'])
+    ->name('revenue.report');
+    // 🔹 Route JSON để lấy dữ liệu biểu đồ mà không reload trang
+Route::get('/seller/revenue/json', [SellerRevenueController::class, 'getJson'])
+    ->middleware(['auth', 'role:seller'])
+    ->name('seller.revenue.json');
+
+
 });// 📡 JSON API
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     // 📊 Dashboard chính
