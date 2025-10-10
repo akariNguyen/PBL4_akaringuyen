@@ -42,9 +42,7 @@
             
             <div class="brand"><img src="/Picture/logo.png" alt="E-Market"> E-Market</div>
         </div>
-        <div>
-            <a href="/" style="text-decoration:none; padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; color:#111827; background:#fff;">Trang chủ</a>
-        </div>
+        
     </div>
 
     <div class="container">

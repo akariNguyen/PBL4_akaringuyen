@@ -122,8 +122,7 @@
                 <ul class="menu">
                     <li><a href="#" data-view="orders_all">Tất cả</a></li>
                     
-                    <li><a href="#" data-view="handover">Bàn Giao Đơn Hàng</a></li>
-                    <li><a href="#" data-view="returns">Trả hàng/Hoàn tiền/Hủy</a></li>
+                    
                     
                 </ul>
             </div>
@@ -768,8 +767,7 @@ const shopStatus = @json($shop ? $shop->status : 'active');
         var map = {
             'orders_all': 'tpl-orders-all',
             'orders_bulk': 'tpl-orders-all',
-            'handover': 'tpl-orders-all',
-            'returns': 'tpl-orders-all',
+            
             'shipping': 'tpl-orders-all',
             'products_all': 'tpl-products-all',
             'product_add': 'tpl-product-add',
