@@ -16,11 +16,11 @@
         .navbar {
             position:sticky; top:0; background:#ffffff;
             border-bottom:1px solid #e5e7eb; z-index:50;
-            height:64px; /* chiều cao navbar */
+            height:64px;
         }
         .nav-inner {
             max-width:1200px; margin:0 auto;
-            display:flex; align-items:center; justify-content:space-between; /* Đưa E-Market và nút ra 2 bên */
+            display:flex; align-items:center; justify-content:space-between;
             height:100%; padding:0 24px;
         }
         .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:24px; color:var(--primary); white-space:nowrap; }
@@ -36,28 +36,28 @@
 
         /* HERO */
         .hero {
-            height:100vh; /* Chiếm toàn bộ chiều cao màn hình, bao gồm tab bar dưới */
+            height:100vh;
             width:100%;
-            display:flex; align-items:flex-start; justify-content:flex-start; /* Giữ trên trái */
+            display:flex; align-items:flex-start; justify-content:flex-start;
             position:relative;
             overflow:visible;
         }
         .hero img {
             position:absolute; inset:0;
-            width:100%; height:100vh; /* Chiếm toàn bộ chiều cao màn hình, bao gồm tab bar dưới */
-            object-fit:cover; /* ảnh phủ toàn bộ */
-            z-index:-1; /* ảnh nằm dưới */
-            top:0; /* Đảm bảo không mất phần trên, bắt đầu từ đầu trang */
+            width:100%; height:100vh;
+            object-fit:cover;
+            z-index:-1;
+            top:0;
         }
         .hero-content {
             background:rgba(255,255,255,0.85);
-            padding:40px; /* Tăng padding để text to hơn */
+            padding:40px;
             border-radius:12px;
-            max-width:500px; /* Tăng kích thước max-width */
+            max-width:500px;
             width:100%;
             text-align:center;
             box-shadow:0 4px 16px rgba(0,0,0,0.15);
-            margin:120px 0 0 24px; /* Tăng margin-top lên 120px để text xuống dưới xíu */
+            margin:120px 0 0 24px;
         }
 
         /* FORM */
@@ -75,6 +75,22 @@
             cursor:pointer; font-weight:600;
         }
         .helper { margin-top:10px; font-size:14px; color:#6b7280; }
+
+        /* ✅ Hàng ngang cho 2 ô */
+        .field-row {
+            display:flex;
+            gap:16px;
+            align-items:flex-start;
+            margin-bottom:14px;
+        }
+        .field-row .field {
+            margin-bottom:0;
+        }
+
+        /* ✅ Responsive: màn nhỏ sẽ tự xuống dòng */
+        @media (max-width:600px) {
+            .field-row { flex-direction:column; }
+        }
     </style>
 </head>
 <body>
@@ -126,6 +142,7 @@
                     <button class="btn" type="submit">Đăng nhập</button>
                     <div class="helper">Chưa có tài khoản? <a href="/register">Đăng ký</a></div>
                 </form>
+
             @elseif($mode === 'register')
                 <h2 style="margin:0 0 16px 0; font-size:24px;">Đăng ký</h2>
                 
@@ -145,29 +162,39 @@
                         <label for="name">Họ và tên</label>
                         <input id="name" type="text" name="name" placeholder="Nguyễn Văn A" value="{{ old('name') }}" required>
                     </div>
+
                     <div class="field">
                         <label for="reg_email">Email</label>
                         <input id="reg_email" type="email" name="email" placeholder="you@example.com" value="{{ old('email') }}" required>
                     </div>
-                    <div class="field">
-                        <label for="phone">Số điện thoại</label>
-                        <input id="phone" type="tel" name="phone" placeholder="09xx xxx xxx" value="{{ old('phone') }}" required>
+
+                    <!-- ✅ Số điện thoại + Giới tính (70/30) -->
+                    <div class="field-row">
+                        <div class="field" style="flex:7">
+                            <label for="phone">Số điện thoại</label>
+                            <input id="phone" type="tel" name="phone" placeholder="09xx xxx xxx" value="{{ old('phone') }}" required>
+                        </div>
+                        <div class="field" style="flex:3">
+                            <label for="gender">Giới tính</label>
+                            <select id="gender" name="gender" required>
+                                <option value="male" {{ old('gender')=='male' ? 'selected' : '' }}>Nam</option>
+                                <option value="female" {{ old('gender')=='female' ? 'selected' : '' }}>Nữ</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="field">
-                        <label for="gender">Giới tính</label>
-                        <select id="gender" name="gender" required>
-                            <option value="male" {{ old('gender')=='male' ? 'selected' : '' }}>Nam</option>
-                            <option value="female" {{ old('gender')=='female' ? 'selected' : '' }}>Nữ</option>
-                        </select>
+
+                    <!-- ✅ Mật khẩu + Nhập lại (50/50) -->
+                    <div class="field-row">
+                        <div class="field" style="flex:1">
+                            <label for="reg_password">Mật khẩu</label>
+                            <input id="reg_password" type="password" name="password" placeholder="••••••••" required>
+                        </div>
+                        <div class="field" style="flex:1">
+                            <label for="password_confirmation">Nhập lại mật khẩu</label>
+                            <input id="password_confirmation" type="password" name="password_confirmation" placeholder="••••••••" required>
+                        </div>
                     </div>
-                    <div class="field">
-                        <label for="reg_password">Mật khẩu</label>
-                        <input id="reg_password" type="password" name="password" placeholder="••••••••" required>
-                    </div>
-                    <div class="field">
-                        <label for="password_confirmation">Nhập lại mật khẩu</label>
-                        <input id="password_confirmation" type="password" name="password_confirmation" placeholder="••••••••" required>
-                    </div>
+
                     <div class="field">
                         <label for="role">Vai trò</label>
                         <select id="role" name="role" required>
@@ -175,6 +202,7 @@
                             <option value="seller" {{ old('role') == 'seller' ? 'selected' : '' }}>Người bán</option>
                         </select>
                     </div>
+
                     <button class="btn" type="submit">Tạo tài khoản</button>
                     <div class="helper">Đã có tài khoản? <a href="/login">Đăng nhập</a></div>
                 </form>
