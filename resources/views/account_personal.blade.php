@@ -3,34 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thông tin cá nhân - E‑Market</title>
+    <title>Thông tin cá nhân - E-Market</title>
     <style>
         body { font-family: Inter, Arial, sans-serif; margin:0; background:#fafafa; }
-        .topbar { height:56px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; gap:10px; padding:0 16px; background:#fff; }
-        .topbar a { text-decoration:none; color:#111827; }
-        .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:22px; }
-        .brand img { height:80px; width:auto; }
+
+        /* NAVBAR / TOPBAR */
+        .topbar {
+            height:64px;
+            border-bottom:1px solid #e5e7eb;
+            display:flex;
+            align-items:center;
+            gap:10px;
+            padding:0 24px;
+            background:#fff;
+            position:sticky;
+            top:0;
+            z-index:50;
+        }
+        .brand {
+            display:flex;
+            align-items:center;
+            gap:10px;
+            font-weight:700;
+            font-size:22px;
+            color:#111827;
+            white-space:nowrap;
+        }
+        .brand img {
+            height:80px;
+            width:auto;
+            display:block;
+        }
+
+        /* CONTAINER + FORM STYLES */
         .container { max-width: 960px; margin: 16px auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; }
         .tabs { display:flex; gap:0; border-bottom:1px solid #e5e7eb; margin-bottom:12px; }
         .tab { padding:10px 14px; cursor:pointer; border:0; background:none; color:#6b7280; font-weight:600; }
         .tab.active { color:#111827; position:relative; }
         .tab.active::after { content:""; position:absolute; left:10px; right:10px; bottom:-1px; height:2px; background:#2563eb; }
+
         .section { padding-top:8px; }
         .row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
         .label { color:#6b7280; min-width:140px; }
         input[type="text"], input[type="password"] { padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; }
-        .edit-input { max-width: 250px; }
         .btn { padding:8px 12px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; }
         .btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
-        .icon-btn { 
-            border:none; 
-            background:none; 
-            cursor:pointer; 
-            color:#2e7d32; 
-            padding:10px; 
-            font-size: 18px; 
-            border-radius: 8px; 
-        }
+        .icon-btn { border:none; background:none; cursor:pointer; color:#2e7d32; padding:10px; font-size:18px; border-radius:8px; }
         .icon-btn:hover { background:#f3f4f6; color:#1b5e20; }
         .muted { color:#6b7280; }
         .avatar { height:48px; width:48px; border-radius:999px; object-fit:cover; }
@@ -49,7 +67,7 @@
 <body>
     <div class="topbar">
         <div class="brand">
-            <img src="/Picture/logo.png" alt="E‑Market">
+             <img src="{{ asset('Picture/Logo.png') }}" alt="E-Market">
             <span style="color:#2563eb;">E‑Market</span>
         </div>
     </div>
@@ -84,12 +102,27 @@
                 </div>
                 <div class="row">
                     <div class="label">Avatar</div>
-                    <div class="inline">
+                   <div class="inline">
                         @if(auth()->user()->avatar_path)
-                            <img id="avatar_img" src="{{ strpos(auth()->user()->avatar_path, '/Picture/') === 0 ? auth()->user()->avatar_path : Storage::disk('public')->url(auth()->user()->avatar_path) }}" alt="avatar" class="avatar">
-                        @else <img id="avatar_img" src="/Picture/avata_macdinh_nam.png" alt="avatar" class="avatar"> @endif
+                            {{-- Nếu user đã có avatar upload --}}
+                            <img id="avatar_img"
+                                src="{{ strpos(auth()->user()->avatar_path, '/Picture/') === 0 
+                                            ? auth()->user()->avatar_path 
+                                            : Storage::disk('public')->url(auth()->user()->avatar_path) }}"
+                                alt="avatar"
+                                class="avatar">
+                        @else
+                            {{-- Nếu chưa có avatar, chọn theo giới tính --}}
+                            @if(auth()->user()->gender === 'female')
+                                <img id="avatar_img" src="{{ asset('Picture/Avata/avatar_macdinh_nu.jpg') }}" alt="avatar" class="avatar">
+                            @else
+                                <img id="avatar_img" src="{{ asset('Picture/Avata/avatar_macdinh_nam.jpg') }}" alt="avatar" class="avatar">
+                            @endif
+                        @endif
+
                         <input id="avatar_input" class="edit-input" type="file" name="avatar" accept="image/*" style="margin-left:12px;">
                     </div>
+
                 </div>
                 <div class="row">
                     <div class="label">Họ tên</div>

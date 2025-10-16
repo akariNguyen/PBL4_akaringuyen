@@ -38,12 +38,14 @@
 </head>
 <body>
     <div class="top">
-        <div style="display:flex;align-items:center;gap:10px;">
-            
-            <div class="brand"><img src="/Picture/logo.png" alt="E-Market"> E-Market</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <div class="brand">
+            <img src="{{ asset('Picture/Logo.png') }}" alt="E-Market" style="height:80px; width:auto; display:block;">
+            E-Market
         </div>
-        
     </div>
+</div>
+
 
     <div class="container">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">

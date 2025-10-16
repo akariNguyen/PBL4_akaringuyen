@@ -27,10 +27,11 @@
 </head>
 <body>
     <div class="topbar">
-        <a href="/">
-            <img src="/Picture/logo.png" alt="E‑Market" style="height:28px; width:auto;"> E‑Market
-        </a>
-    </div>
+    <a href="/">
+        <img src="{{ asset('Picture/Logo.png') }}" alt="E-Market" style="height:80px; width:auto;"> 
+        E-Market
+    </a>
+</div>
     <div class="container">
         @if(session('success'))
             <div style="background:#ecfdf5; color:#047857; padding:10px 12px; border:1px solid #a7f3d0; border-radius:8px; margin-bottom:12px;">{{ session('success') }}</div>
@@ -48,7 +49,7 @@
                     @if($shop && $shop->logo_path)
                         <img id="logo_img" src="{{ Storage::disk('public')->url($shop->logo_path) }}" class="logo" alt="logo">
                     @else
-                        <img id="logo_img" src="/Picture/logo.png" class="logo" alt="logo">
+                        <img id="logo_img" src="{{ asset('Picture/Logo.png') }}" class="logo" alt="logo">
                     @endif
                     <input id="logo_input" type="file" name="logo" accept="image/*" class="edit-input" style="margin-left:12px;">
                 </div>

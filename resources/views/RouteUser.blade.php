@@ -143,9 +143,10 @@
     <!-- 🔹 Thanh trên cùng -->
     <div class="topbar">
         <div class="brand">
-            <img src="/Picture/logo.png" alt="E-Market">
-            <span style="color:#2563eb;">E-Market</span>
-        </div>
+    <img src="{{ asset('Picture/Logo.png') }}" alt="E-Market" style="height:80px; width:auto; display:block;">
+    <span style="color:#2563eb; font-weight:700;">E-Market</span>
+</div>
+
 
         <form class="search" method="get" action="">
             <input type="text" name="q" value="{{ request('q') }}" placeholder="Tìm kiếm sản phẩm...">

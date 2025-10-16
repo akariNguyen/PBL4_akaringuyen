@@ -26,9 +26,15 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="brand"><img src="/Picture/logo.png" alt="Logo"> E-Market</div>
-            <div><a href="/" style="text-decoration:none; color:#2563eb;">Trang chủ</a></div>
-        </div>
+    <div class="brand" style="display:flex; align-items:center; gap:10px;">
+        <img src="{{ asset('Picture/Logo.png') }}" alt="Logo" style="height:80px; width:auto; display:block;">
+        <span style="font-weight:700; color:#111827;">E-Market</span>
+    </div>
+    <div>
+        <a href="/" style="text-decoration:none; color:#2563eb; font-weight:600;">Trang chủ</a>
+    </div>
+</div>
+
 
         <h2 style="margin:0 0 12px 0;">Tạo thông tin shop</h2>
         <p style="margin:0 0 16px 0; color:#6b7280;">Điền thông tin bên dưới để khởi tạo shop của bạn.</p>

@@ -23,7 +23,7 @@ return new class extends Migration
         // 🔹 Nếu rollback, thêm lại giá trị 'closed'
         DB::statement("
             ALTER TABLE `shops`
-            MODIFY `status` ENUM('pending', 'active', 'suspended', 'rejected', 'closed')
+            MODIFY `status` ENUM('pending', 'active', 'suspended', 'rejected')
             NOT NULL DEFAULT 'pending'
         ");
     }

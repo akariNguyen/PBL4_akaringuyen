@@ -58,8 +58,8 @@ class ShopController extends Controller
 
         // Tạo user (lúc này mới lưu vào DB)
         $defaultAvatar = $pendingSeller['gender'] === 'female'
-            ? '/Picture/avata_macdinh_nu.png'
-            : '/Picture/avata_macdinh_nam.png';
+           ? '/Picture/Avata/avatar_macdinh_nu.jpg'
+            : '/Picture/Avata/avatar_macdinh_nam.jpg';
 
         $user = User::create([
             'name' => $pendingSeller['name'],
@@ -79,7 +79,7 @@ class ShopController extends Controller
             'logo_path' => $logoPath,
             'description' => $validated['description'] ?? null,
             'registered_at' => now(),
-            'status' => $validated['status'],
+            'status' => 'pending', // Chờ duyệt
         ]);
 
         // Xóa session pending seller

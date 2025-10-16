@@ -97,7 +97,7 @@
     <!-- Navbar -->
     <div class="navbar">
         <div class="nav-inner">
-            <div class="brand"><img src="/Picture/logo.png" alt="Logo"> E-Market</div>
+            <div class="brand"><img src="{{ asset('Picture/Logo.png') }}" alt="Logo"> E-Market</div>
             <div class="nav-actions">
                 <a href="/login">Đăng nhập</a>
                 <a class="primary" href="/register">Đăng ký</a>
@@ -107,7 +107,7 @@
 
     <!-- Hero -->
     <div class="hero">
-        <img src="/Picture/backgorund_shopping.jpg" alt="Shopping">
+        <img src="{{ asset('Picture/backgorund_shopping.jpg') }}" alt="Shopping">
 
         <div class="hero-content">
             @if($mode === 'welcome')

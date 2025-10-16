@@ -108,13 +108,15 @@
 @endphp
 
     <div class="topbar">
-        <div class="left">
-            <div class="brand">
-                <img src="/Picture/logo.png" alt="E‑Market">
-                <span class="e-market">E‑Market</span><span class="channel">Kênh bán hàng</span>
-            </div>
+    <div class="left">
+        <div class="brand" style="display:flex; align-items:center; gap:10px;">
+            <img src="{{ asset('Picture/Logo.png') }}" alt="E-Market" style="height:80px; width:auto; display:block;">
+            <span class="e-market" style="color:#2563eb; font-weight:700;">E-Market</span>
+            <span class="channel" style="color:#6b7280; font-weight:500;">Kênh bán hàng</span>
         </div>
     </div>
+</div>
+
     <div class="layout">
         <aside class="sidebar">
             <div class="side-section">
@@ -465,8 +467,11 @@
                 <button class="tab active" data-tab="info">Thông tin</button>
                 <button class="tab" data-tab="password">Đổi mật khẩu</button>
             </div>
+
+            <!-- Thông tin cá nhân -->
             <div id="tab-info" class="section">
-                <form id="formInfo" method="post" action="{{ route('account.personal.update') }}" enctype="multipart/form-data">
+                <!-- ✅ Đã chỉnh đường dẫn tuyệt đối -->
+                <form id="formInfo" method="post" action="/account/personal" enctype="multipart/form-data">
                     @csrf
                     <div class="row" style="justify-content:space-between; margin-bottom:16px;">
                         <h3 style="margin:0;">Thông tin cá nhân</h3>
@@ -525,8 +530,11 @@
                 </form>
                 <p class="hint" style="margin-top:8px;">Bấm biểu tượng ✎ để chỉnh sửa trực tiếp họ tên, số điện thoại và avatar. Chọn ảnh để xem trước, chỉ lưu khi bấm Lưu.</p>
             </div>
+
+            <!-- Đổi mật khẩu -->
             <div id="tab-password" class="section" style="display:none;">
-                <form id="formPassword" method="post" action="{{ route('account.password.update') }}">
+                <!-- ✅ Đã chỉnh đường dẫn tuyệt đối -->
+                <form id="formPassword" method="post" action="/account/password">
                     @csrf
                     <div class="row">
                         <div class="label">Mật khẩu hiện tại</div>
@@ -553,12 +561,15 @@
                 </form>
             </div>
         </div>
+
+        <!-- Thông tin shop -->
         <div class="card">
             @if(session('success'))
                 <div class="success-message">{{ session('success') }}</div>
             @endif
             @php($shop = \App\Models\Shop::find(auth()->id()))
-            <form id="formShop" method="post" action="{{ route('account.shop.update') }}" enctype="multipart/form-data">
+            <!-- ✅ Đã chỉnh đường dẫn tuyệt đối -->
+            <form id="formShop" method="post" action="/account/shop" enctype="multipart/form-data">
                 @csrf
                 <div class="row" style="justify-content:space-between; margin-bottom:16px;">
                     <h3 style="margin:0;">Thông tin shop</h3>
@@ -570,7 +581,7 @@
                         @if($shop && $shop->logo_path)
                             <img id="logo_img" src="{{ Storage::disk('public')->url($shop->logo_path) }}" class="logo" alt="logo">
                         @else
-                            <img id="logo_img" src="/Picture/logo.png" class="logo" alt="logo">
+                            <img id="logo_img" src="{{ asset('Picture/Logo.png') }}" class="logo" alt="logo">
                         @endif
                         <input id="logo_input" type="file" name="logo" accept="image/*" class="edit-input" style="margin-left:12px;">
                     </div>
@@ -593,7 +604,6 @@
                     <div class="label">Trạng thái</div>
                     <div>
                         <span class="view-text" id="shop_status">{{ $shop->status ?? '—' }}</span>
-                        <!-- Không cho sửa trạng thái -->
                         <select class="edit-input" name="status" disabled style="display:none;">
                             <option value="active" {{ ($shop && $shop->status=='active') ? 'selected' : '' }}>Hoạt động</option>
                             <option value="closed" {{ ($shop && $shop->status=='closed') ? 'selected' : '' }}>Đóng cửa</option>
@@ -616,7 +626,8 @@
                 </div>
             </form>
         </div>
-    </template>
+</template>
+
     <template id="tpl-vouchers">
 <?php
     $shop = \App\Models\Shop::where('user_id', auth()->id())->first();
@@ -798,7 +809,15 @@ const shopStatus = @json($shop ? $shop->status : 'active');
     }
     (function init(){
     console.log('Initializing dashboard...');
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect');
     const path = window.location.pathname;
+
+    if (redirect === 'account_personal') {
+        navigate('account_personal');
+        return;
+    }
+
     if (path.includes('/seller/vouchers')) {
         navigate('vouchers');
     } else if (path.includes('/seller/vouchers/create')) {
@@ -806,10 +825,10 @@ const shopStatus = @json($shop ? $shop->status : 'active');
     } else if (path.includes('/seller/dashboard')) {
         navigate('orders_all');
     } else {
-        // Mặc định
         navigate('orders_all');
     }
 })();
+
     document.querySelectorAll('.sidebar a[data-view]').forEach(function(a){
         a.addEventListener('click', function(e){
             e.preventDefault();
@@ -936,7 +955,9 @@ const shopStatus = @json($shop ? $shop->status : 'active');
                         form.parentElement.insertBefore(successDiv, form);
                         if(data.name) document.getElementById('name_text').textContent = data.name;
                         if(data.avatar) document.getElementById('avatar_img').src = data.avatar;
-                        window.location.href = window.location.pathname + '?redirect=account_personal';
+                        window.location.href = '/seller/dashboard?redirect=account_personal';
+
+
                     } else {
                         alert('Có lỗi xảy ra: ' + (data.errors ? Object.values(data.errors).join(', ') : ''));
                     }
@@ -966,7 +987,8 @@ const shopStatus = @json($shop ? $shop->status : 'active');
                         successDiv.className = 'success-message';
                         successDiv.textContent = data.message;
                         formPassword.parentElement.insertBefore(successDiv, formPassword);
-                        window.location.href = window.location.pathname + '?redirect=account_personal';
+                       window.location.href = '/seller/dashboard?redirect=account_personal';
+
                     } else {
                         alert('Có lỗi xảy ra: ' + (data.errors ? Object.values(data.errors).join(', ') : ''));
                     }
@@ -978,67 +1000,78 @@ const shopStatus = @json($shop ? $shop->status : 'active');
             });
         }
     }
-    function bindAccountShop(){
-        var form = document.getElementById('formShop');
-        if(!form) {
-            console.error('Shop form not found');
-            return;
-        }
-        var btnEdit = document.getElementById('btnEditShop');
-        var btnCancel = document.getElementById('btnCancelShop');
-      if (btnEdit) {
-    btnEdit.addEventListener('click', function (e) {
-        if (shopStatus === 'suspended') {
-            e.preventDefault();
-            alert('🚫 Shop của bạn đang bị đình chỉ — không thể chỉnh sửa thông tin.');
-            return;
-        }
-        form.classList.add('editing');
-    });
-}
-        if(btnCancel) btnCancel.addEventListener('click', function(){ form.classList.remove('editing'); });
-        var logoInput = document.getElementById('logo_input');
-        var logoImg = document.getElementById('logo_img');
-        if(logoInput && logoImg){
-            logoInput.addEventListener('change', function(){
-                if(this.files && this.files[0]){
-                    var reader = new FileReader();
-                    reader.onload = function(e){ logoImg.src = e.target.result; }
-                    reader.readAsDataURL(this.files[0]);
-                }
-            });
-        }
-        form.addEventListener('submit', function(e){
-            e.preventDefault();
-            var formData = new FormData(form);
-            fetch(form.getAttribute('action'), {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.success){
-                    form.classList.remove('editing');
-                    var successDiv = document.createElement('div');
-                    successDiv.className = 'success-message';
-                    successDiv.textContent = data.message;
-                    form.parentElement.insertBefore(successDiv, form);
-                    if(data.name) form.querySelector('.view-text').textContent = data.name;
-                    if(data.logo) document.getElementById('logo_img').src = data.logo;
-                    window.location.href = window.location.pathname + '?redirect=account_personal';
-                } else {
-                    alert('Có lỗi xảy ra: ' + (data.errors ? Object.values(data.errors).join(', ') : ''));
-                }
-            })
-            .catch(error => {
-                console.error('Shop form submission error:', error);
-                alert('Có lỗi xảy ra khi gửi yêu cầu.');
-            });
+    function bindAccountShop() {
+    var form = document.getElementById('formShop');
+    if(!form) {
+        console.error('Shop form not found');
+        return;
+    }
+
+    var btnEdit = document.getElementById('btnEditShop');
+    var btnCancel = document.getElementById('btnCancelShop');
+
+    if (btnEdit) {
+        btnEdit.addEventListener('click', function (e) {
+            if (shopStatus === 'suspended') {
+                e.preventDefault();
+                alert('🚫 Shop của bạn đang bị đình chỉ — không thể chỉnh sửa thông tin.');
+                return;
+            }
+            form.classList.add('editing');
         });
     }
+
+    if(btnCancel) btnCancel.addEventListener('click', function(){ form.classList.remove('editing'); });
+
+    var logoInput = document.getElementById('logo_input');
+    var logoImg = document.getElementById('logo_img');
+
+    if(logoInput && logoImg){
+        logoInput.addEventListener('change', function(){
+            if(this.files && this.files[0]){
+                var reader = new FileReader();
+                reader.onload = function(e){ logoImg.src = e.target.result; }
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+    }
+
+    form.addEventListener('submit', function(e){
+        e.preventDefault();
+        var formData = new FormData(form);
+
+        fetch(form.getAttribute('action'), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success){
+                form.classList.remove('editing');
+                var successDiv = document.createElement('div');
+                successDiv.className = 'success-message';
+                successDiv.textContent = data.message;
+                form.parentElement.insertBefore(successDiv, form);
+
+                if(data.name) form.querySelector('.view-text').textContent = data.name;
+                if(data.logo) document.getElementById('logo_img').src = data.logo;
+
+                // 🔁 Reload về seller dashboard và mở lại tab account_personal
+                window.location.href = '/seller/dashboard?redirect=account_personal';
+            } else {
+                alert('Có lỗi xảy ra: ' + (data.errors ? Object.values(data.errors).join(', ') : ''));
+            }
+        })
+        .catch(error => {
+            console.error('Shop form submission error:', error);
+            alert('Có lỗi xảy ra khi gửi yêu cầu.');
+        });
+    });
+}
+
     function renderOrders(status, fromDate = null, toDate = null) {
         console.log('Rendering orders for status:', status, 'from:', fromDate, 'to:', toDate);
         const list = document.getElementById('ordersList');
