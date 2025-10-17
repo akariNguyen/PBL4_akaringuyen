@@ -302,8 +302,16 @@
         <div class="grid" id="productsGrid">
             @foreach($sellerProducts as $p)
     <?php
-        $imgs = is_array($p->images) ? $p->images : [];
-        $img = count($imgs) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
+        $imgs = is_array($p->images) ? $p->images : json_decode($p->images, true);
+
+        if ($imgs && count($imgs) > 0) {
+            // ✅ Làm sạch đường dẫn và build URL chuẩn
+            $path = ltrim(str_replace(['\\', '//'], ['', '/'], $imgs[0]), '/');
+            $img = asset('storage/' . $path);
+        } else {
+            // Ảnh mặc định khi không có ảnh
+            $img = asset('Picture/products/Aothun.jpg');
+        }
         $statusColor = match($p->status){
             'in_stock' => '#16a34a',
             'out_of_stock' => '#dc2626',
