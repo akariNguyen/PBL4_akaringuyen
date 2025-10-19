@@ -486,12 +486,35 @@
                         <button type="button" id="btnEdit" class="icon-btn" title="Chỉnh sửa">✎</button>
                     </div>
                     <div class="row">
-                        <div class="label">Avatar</div>
-                        <div>
-                            <img id="avatar_img" src="{{ auth()->user()->avatar_path ? Storage::disk('public')->url(auth()->user()->avatar_path) : '/Picture/avatar.jpg' }}" class="avatar" alt="avatar">
-                            <input id="avatar_input" type="file" name="avatar" accept="image/*" class="edit-input" style="margin-left:12px;">
-                        </div>
-                    </div>
+    <div class="label">Avatar</div>
+    <div>
+        @php
+            use Illuminate\Support\Str;
+
+            $user = auth()->user();
+            $avatarPath = $user->avatar_path;
+
+            if ($avatarPath) {
+                // Nếu là ảnh upload trong storage
+                if (Str::startsWith($avatarPath, 'avatars/')) {
+                    $avatarUrl = asset('storage/' . $avatarPath);
+                } else {
+                    // Nếu là đường dẫn tuyệt đối /Picture/... thì giữ nguyên
+                    $avatarUrl = asset($avatarPath);
+                }
+            } else {
+                // Nếu không có ảnh → dùng ảnh mặc định theo giới tính
+                $avatarUrl = $user->gender === 'female'
+                    ? asset('/Picture/Avata/avatar_macdinh_nu.jpg')
+                    : asset('/Picture/Avata/avatar_macdinh_nam.jpg');
+            }
+        @endphp
+
+        <img id="avatar_img" src="{{ $avatarUrl }}" class="avatar" alt="avatar">
+        <input id="avatar_input" type="file" name="avatar" accept="image/*" class="edit-input" style="margin-left:12px;">
+    </div>
+</div>
+
                     <div class="row">
                         <div class="label">Họ tên</div>
                         <div>
@@ -575,25 +598,35 @@
             @if(session('success'))
                 <div class="success-message">{{ session('success') }}</div>
             @endif
-            @php($shop = \App\Models\Shop::find(auth()->id()))
-            <!-- ✅ Đã chỉnh đường dẫn tuyệt đối -->
-            <form id="formShop" method="post" action="/account/shop" enctype="multipart/form-data">
-                @csrf
-                <div class="row" style="justify-content:space-between; margin-bottom:16px;">
-                    <h3 style="margin:0;">Thông tin shop</h3>
-                    <button type="button" id="btnEditShop" class="icon-btn" title="Chỉnh sửa">✎</button>
-                </div>
-                <div class="row">
-                    <div class="label">Logo</div>
-                    <div>
-                        @if($shop && $shop->logo_path)
-                            <img id="logo_img" src="{{ Storage::disk('public')->url($shop->logo_path) }}" class="logo" alt="logo">
-                        @else
-                            <img id="logo_img" src="{{ asset('Picture/Logo.png') }}" class="logo" alt="logo">
-                        @endif
-                        <input id="logo_input" type="file" name="logo" accept="image/*" class="edit-input" style="margin-left:12px;">
-                    </div>
-                </div>
+            @php
+    use Illuminate\Support\Facades\Storage;
+    use App\Models\Shop;
+
+    // ✅ Lấy shop theo user_id (không dùng find)
+    $shop = Shop::where('user_id', auth()->id())->first();
+@endphp
+
+<form id="formShop" method="post" action="/account/shop" enctype="multipart/form-data">
+    @csrf
+    <div class="row" style="justify-content:space-between; margin-bottom:16px;">
+        <h3 style="margin:0;">Thông tin shop</h3>
+        <button type="button" id="btnEditShop" class="icon-btn" title="Chỉnh sửa">✎</button>
+    </div>
+
+    <div class="row">
+        <div class="label">Logo</div>
+        <div>
+            @if($shop && $shop->logo_path && Storage::disk('public')->exists($shop->logo_path))
+                {{-- ✅ Logo trong storage/public/shops --}}
+                <img id="logo_img" src="{{ Storage::url($shop->logo_path) }}" class="logo" alt="logo">
+            @else
+                {{-- 🖼️ Logo mặc định --}}
+                <img id="logo_img" src="{{ asset('Picture/Logo.png') }}" class="logo" alt="logo">
+            @endif
+            <input id="logo_input" type="file" name="logo" accept="image/*" class="edit-input" style="margin-left:12px;">
+        </div>
+    </div>
+
                 <div class="row">
                     <div class="label">Tên shop</div>
                     <div>
