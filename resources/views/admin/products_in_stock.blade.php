@@ -238,15 +238,22 @@
         <div class="grid">
           @foreach($products as $p)
             @php
-              $imgs = is_array($p->images) ? $p->images : json_decode($p->images, true);
-              $img = (is_array($imgs) && count($imgs))
-                ? Storage::disk('public')->url($imgs[0])
-                : '/Picture/products/Aothun.jpg';
-              $shop = \App\Models\Shop::where('user_id', $p->seller_id)->with('user')->first();
-              $supplier = $shop ? $shop->name : ($p->seller->name ?? 'Nhà cung cấp');
-              $avgRating = round($p->reviews()->avg('rating') ?? 0, 1);
-              $soldCount = \App\Models\OrderItem::where('product_id', $p->id)->sum('quantity');
-            @endphp
+                if (is_string($p->images)) {
+                $imgs = json_decode($p->images, true);
+            } elseif (is_array($p->images)) {
+                $imgs = $p->images;
+            } else {
+                $imgs = [];            }
+
+    $imgPath = !empty($imgs[0]) ? $imgs[0] : null;
+    $img = $imgPath ? asset('storage/' . $imgPath) : asset('Picture/products/Aothun.jpg');
+
+    $shop = \App\Models\Shop::where('user_id', $p->seller_id)->with('user')->first();
+    $supplier = $shop ? $shop->name : ($p->seller->name ?? 'Nhà cung cấp');
+    $avgRating = round($p->reviews()->avg('rating') ?? 0, 1);
+    $soldCount = \App\Models\OrderItem::where('product_id', $p->id)->sum('quantity');
+@endphp
+
 
             <div class="card">
               <img src="{{ $img }}" alt="{{ $p->name }}">

@@ -51,13 +51,24 @@
                     <tbody>
                         @foreach($products as $p)
                             @php
-                                $imgs = is_array($p->images) ? $p->images : json_decode($p->images, true);
-                                $img = (is_array($imgs) && count($imgs)) 
-                                    ? Storage::disk('public')->url($imgs[0])
-                                    : '/Picture/products/Aothun.jpg';
-                                $sellerName = $p->seller->name ?? '—';
-                                $shopName = $p->seller->shop->name ?? '—';
-                            @endphp
+                                    // 🖼️ Xử lý ảnh sản phẩm (dù là JSON string hay array đều ok)
+                                    if (is_string($p->images)) {
+                                        $imgs = json_decode($p->images, true);
+                                    } elseif (is_array($p->images)) {
+                                        $imgs = $p->images;
+                                    } else {
+                                        $imgs = [];
+                                    }
+
+                                    $imgPath = !empty($imgs[0]) ? $imgs[0] : null;
+                                    $img = $imgPath ? asset('storage/' . $imgPath) : asset('Picture/products/Aothun.jpg');
+
+
+                                    // 🧩 Thông tin người bán và shop
+                                    $sellerName = $p->seller->name ?? '—';
+                                    $shopName = $p->seller->shop->name ?? '—';
+                                @endphp
+
 
                             <tr>
                                 <td>
