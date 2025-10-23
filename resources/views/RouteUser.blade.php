@@ -200,7 +200,10 @@
                         @foreach($products as $p)
                             <?php
                                 $imgs = is_array($p->images) ? $p->images : json_decode($p->images, true);
-                                $img = (is_array($imgs) && count($imgs)) ? Storage::disk('public')->url($imgs[0]) : '/Picture/products/Aothun.jpg';
+                                $img = (is_array($imgs) && count($imgs)) 
+                                ? asset('storage/' . $imgs[0]) 
+                                : asset('Picture/products/Aothun.jpg');
+
                                 $shop = \App\Models\Shop::find($p->seller_id);
                                 $supplier = $shop ? $shop->name : ($p->seller->name ?? 'Nhà cung cấp');
                                 $avgRating = round($p->reviews()->avg('rating') ?? 0, 1);
