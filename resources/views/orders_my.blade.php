@@ -94,9 +94,19 @@
                         @foreach($order->items as $it)
                             <?php 
                                 $p = \App\Models\Product::find($it->product_id); 
-                                $img = $p && is_array($p->images) && count($p->images) 
-                                    ? Storage::disk('public')->url($p->images[0]) 
-                                    : '/Picture/products/Aothun.jpg'; 
+                                $imgs = [];
+
+                                if ($p) {
+                                    if (is_array($p->images)) {
+                                        $imgs = $p->images;
+                                    } elseif (is_string($p->images)) {
+                                        $imgs = json_decode($p->images, true) ?? [];
+                                    }
+                                }
+
+                                $imgPath = !empty($imgs[0]) ? $imgs[0] : null;
+                                $img = $imgPath ? asset('storage/' . $imgPath) : asset('Picture/products/Aothun.jpg');
+                                
                             ?>
                             <div class="item">
                                 <img src="{{ $img }}" alt="{{ $it->product_name }}">

@@ -104,21 +104,34 @@
                     <div class="label">Avatar</div>
                    <div class="inline">
                         @if(auth()->user()->avatar_path)
-                            {{-- Nếu user đã có avatar upload --}}
-                            <img id="avatar_img"
-                                src="{{ strpos(auth()->user()->avatar_path, '/Picture/') === 0 
-                                            ? auth()->user()->avatar_path 
-                                            : Storage::disk('public')->url(auth()->user()->avatar_path) }}"
-                                alt="avatar"
-                                class="avatar">
+                            {{-- Nếu user đã upload avatar --}}
+                            @php
+                                $avatarPath = auth()->user()->avatar_path;
+                                // Nếu ảnh nằm trong /storage (upload), hiển thị đúng URL công khai
+                                if (Str::startsWith($avatarPath, 'avatars/') || Str::startsWith($avatarPath, 'users/') || Str::startsWith($avatarPath, 'public/')) {
+                                    $avatarUrl = asset('storage/' . ltrim($avatarPath, 'public/'));
+                                }
+                                // Nếu lưu trong /Picture (ảnh mặc định)
+                                elseif (Str::startsWith($avatarPath, '/Picture/')) {
+                                    $avatarUrl = asset(ltrim($avatarPath, '/'));
+                                }
+                                // Trường hợp khác, fallback ảnh mặc định
+                                else {
+                                    $avatarUrl = asset('Picture/Avata/avatar_macdinh_nam.jpg');
+                                }
+                            @endphp
+
+                            <img id="avatar_img" src="{{ $avatarUrl }}" alt="avatar" class="avatar">
+
                         @else
-                            {{-- Nếu chưa có avatar, chọn theo giới tính --}}
+                            {{-- Nếu chưa có avatar --}}
                             @if(auth()->user()->gender === 'female')
                                 <img id="avatar_img" src="{{ asset('Picture/Avata/avatar_macdinh_nu.jpg') }}" alt="avatar" class="avatar">
                             @else
                                 <img id="avatar_img" src="{{ asset('Picture/Avata/avatar_macdinh_nam.jpg') }}" alt="avatar" class="avatar">
                             @endif
                         @endif
+
 
                         <input id="avatar_input" class="edit-input" type="file" name="avatar" accept="image/*" style="margin-left:12px;">
                     </div>

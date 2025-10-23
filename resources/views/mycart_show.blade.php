@@ -50,9 +50,11 @@
                     @foreach($items as $item)
                         @php
                             $subtotal = $item->product->price * $item->quantity;
-                            $img = count($item->product->images ?? [])
-                                ? Storage::disk('public')->url($item->product->images[0])
-                                : '/Picture/products/Aothun.jpg';
+                            $imgs = is_array($item->product->images) ? $item->product->images : json_decode($item->product->images, true);
+                            $img = (is_array($imgs) && count($imgs))
+                                ? asset('storage/' . $imgs[0])
+                                : asset('Picture/products/Aothun.jpg');
+
                         @endphp
                         <div class="cart-item" data-id="{{ $item->id }}">
                             <input type="checkbox" class="item-checkbox" 

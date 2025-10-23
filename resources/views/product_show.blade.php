@@ -81,10 +81,19 @@ $endShippingDate = (clone $currentDate)->modify('+5 days')->format('d M');
     <div class="container-wrapper">
         <div class="container">
             <div class="images">
-                @foreach($product->images ?? [] as $img)
-                    <img src="{{ Storage::disk('public')->url($img) }}" alt="{{ $product->name }}">
-                @endforeach
+                @php
+                    $imgs = is_array($product->images) ? $product->images : json_decode($product->images, true);
+                @endphp
+
+                @if(!empty($imgs))
+                    @foreach($imgs as $imgPath)
+                        <img src="{{ asset('storage/' . $imgPath) }}" alt="{{ $product->name }}">
+                    @endforeach
+                @else
+                    <img src="{{ asset('Picture/products/Aothun.jpg') }}" alt="{{ $product->name }}">
+                @endif
             </div>
+
 
             <div class="details">
                 {{-- Thông báo thêm giỏ hàng thành công --}}
