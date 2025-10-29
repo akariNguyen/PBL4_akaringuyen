@@ -52,37 +52,31 @@ class AuthController extends Controller
         }
 
         if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-            $user = Auth::user();
+    $request->session()->regenerate();
+    $user = Auth::user();
 
-            Log::info('✅ Đăng nhập thành công', ['user_id' => $user->id, 'role' => $user->role]);
+    Log::info('✅ Đăng nhập thành công', ['user_id' => $user->id, 'role' => $user->role]);
 
-            // Điều hướng theo role
-            if ($user->role === 'admin') {
-                return redirect()->route('admin.dashboard');
-            } elseif ($user->role === 'seller') {
-                $shop = $user->shop;
+    // 🟢 Ép mã phản hồi HTTP 200 cho Logstash nhận dạng "success"
+    return response()
+        ->redirectTo(route(match ($user->role) {
+            'admin' => 'admin.dashboard',
+            'seller' => $user->shop
+                ? ($user->shop->status === 'rejected' ? 'seller.shop.rejected' : 'seller.dashboard')
+                : 'shops.create',
+            default => 'customer.dashboard',
+        }))
+        ->setStatusCode(200);
+}
 
-                if ($shop) {
-                    Log::info('🛍️ Kiểm tra shop', ['shop_id' => $shop->id ?? null, 'status' => $shop->status]);
-                    if ($shop->status === 'rejected') {
-                        Log::warning('⚠️ Shop bị từ chối — chuyển hướng đến trang chỉnh sửa');
-                        return redirect()->route('seller.shop.rejected');
-                    }
-                } else {
-                    Log::info('🆕 Seller chưa có shop — chuyển hướng đến tạo shop');
-                    return redirect()->route('shops.create');
-                }
+// 🔴 Đăng nhập thất bại — ép mã 401
+Log::error('❌ Đăng nhập thất bại', ['email' => $request->email]);
+return response()
+    ->redirectTo(url()->previous())
+    ->setStatusCode(401)
+    ->withErrors(['email' => 'Email hoặc mật khẩu không đúng'])
+    ->withInput($request->except('password'));
 
-                return redirect()->route('seller.dashboard');
-            } else {
-                return redirect()->route('customer.dashboard');
-            }
-        }
-
-        Log::error('❌ Đăng nhập thất bại', ['email' => $request->email]);
-        return back()->withErrors(['email' => 'Email hoặc mật khẩu không đúng'])
-                     ->withInput($request->except('password'));
     }
 
     /** 🟦 Hiển thị form đăng ký */
