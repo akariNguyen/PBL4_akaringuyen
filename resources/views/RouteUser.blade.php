@@ -52,7 +52,7 @@
         .dropdown-content a { display:block; padding:8px 12px; text-decoration:none; color:#111827; }
         .dropdown-content a:hover { background:#f3f4f6; }
 
-        /* --- Phần ưu điểm (đã làm đẹp lại) --- */
+        /* --- Phần ưu điểm --- */
         .benefits {
             display: flex;
             justify-content: center;
@@ -100,17 +100,87 @@
         .content { padding:16px; }
         .grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; }
 
-        .card { border:1px solid var(--border); border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
-        .card img { width:100%; height:160px; object-fit:cover; display:block; background:#f3f4f6; }
+        /* --- Card sản phẩm --- */
+        .card {
+            border:1px solid var(--border);
+            border-radius:12px;
+            overflow:hidden;
+            background:#fff;
+            box-shadow:0 1px 4px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
 
-        .card-body { padding:12px; }
-        .name { font-weight:600; margin-bottom:4px; }
-        .info-row, .price-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--muted); margin-bottom:4px; }
+        .card-img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .card-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .card-body {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            padding: 12px;
+        }
+
+        .name {
+            font-weight: 600;
+            margin-bottom: 4px;
+            min-height: 40px; /* giữ tên sản phẩm đều nhau */
+        }
+
+        .info-row, .price-row {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            font-size:13px;
+            color:var(--muted);
+            margin-bottom:4px;
+        }
+
         .price { color:#ef4444; font-weight:700; font-size:15px; }
         .sold { font-size:13px; color:var(--muted); }
         .seller { color:var(--muted); font-size:13px; }
 
-        .empty { text-align:center; color:var(--muted); padding:40px 16px; border:1px dashed var(--border); border-radius:12px; background:#fff; }
+        .card-body a {
+            display:block;
+            margin-top:auto; /* đẩy nút xuống cuối */
+            padding:8px 12px;
+            border:none;
+            border-radius:6px;
+            background:#16a34a;
+            color:#fff;
+            font-weight:600;
+            cursor:pointer;
+            text-decoration:none;
+            text-align:center;
+            transition: background 0.2s ease;
+        }
+
+        .card-body a:hover {
+            background:#15803d;
+        }
+
+        .empty {
+            text-align:center;
+            color:var(--muted);
+            padding:40px 16px;
+            border:1px dashed var(--border);
+            border-radius:12px;
+            background:#fff;
+        }
 
         @media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .grid { grid-template-columns: repeat(2, 1fr); } }
@@ -143,10 +213,9 @@
     <!-- 🔹 Thanh trên cùng -->
     <div class="topbar">
         <div class="brand">
-    <img src="{{ asset('Picture/Logo.png') }}" alt="E-Market" style="height:80px; width:auto; display:block;">
-    <span style="color:#2563eb; font-weight:700;">E-Market</span>
-</div>
-
+            <img src="{{ asset('Picture/Logo.png') }}" alt="E-Market" style="height:80px; width:auto; display:block;">
+            <span style="color:#2563eb; font-weight:700;">E-Market</span>
+        </div>
 
         <form class="search" method="get" action="">
             <input type="text" name="q" value="{{ request('q') }}" placeholder="Tìm kiếm sản phẩm...">
@@ -169,7 +238,7 @@
         </div>
     </div>
 
-    <!-- 🔹 Phần ưu điểm (mới) -->
+    <!-- 🔹 Phần ưu điểm -->
     <div class="benefits">
         <div class="benefit"><i class="fa-solid fa-shield-halved"></i><span>Cam kết 100% hàng thật</span></div>
         <div class="benefit"><i class="fa-solid fa-truck-fast"></i><span>Freeship mọi đơn</span></div>
@@ -210,7 +279,10 @@
                                 $soldCount = $p->sold_quantity ?? 0;
                             ?>
                             <div class="card">
-                                <img src="{{ $img }}" alt="{{ $p->name }}">
+                                <div class="card-img">
+                                    <img src="{{ $img }}" alt="{{ $p->name }}">
+                                </div>
+
                                 <div class="card-body">
                                     <div class="name">{{ $p->name }}</div>
 
@@ -224,9 +296,7 @@
                                         <span class="sold">Đã bán: {{ $soldCount }}</span>
                                     </div>
 
-                                    <a href="{{ route('product.show', $p->id) }}" style="display:block; margin-top:8px; padding:8px 12px; border:none; border-radius:6px; background:#16a34a; color:#fff; font-weight:600; cursor:pointer; text-decoration:none;">
-                                        Đặt hàng
-                                    </a>
+                                    <a href="{{ route('product.show', $p->id) }}">Đặt hàng</a>
                                 </div>
                             </div>
                         @endforeach
