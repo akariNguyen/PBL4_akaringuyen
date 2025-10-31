@@ -12,12 +12,13 @@ class AdminDashboardController extends Controller
 {
     public function index()
     {
-        $userCount    = User::count();
-        $sellerCount  = User::where('role', 'seller')->count();
+        // ✅ Loại admin khỏi thống kê người dùng
+        $userCount = User::where('role', '!=', 'admin')->count();
+        $sellerCount = User::where('role', 'seller')->count();
         $productCount = Product::count();
         $pendingProducts = Product::where('status', 'pending')->count();
-        $orderCount   = Order::count();
-        $revenue      = Order::where('status', 'completed')->sum('total_price');
+        $orderCount = Order::count();
+        $revenue = Order::where('status', 'completed')->sum('total_price');
 
         $latestOrders = Order::with('user')
             ->latest()

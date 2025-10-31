@@ -158,6 +158,35 @@ function updateTotal() {
     document.querySelector('#discount').textContent = '-' + totalDiscount.toLocaleString('vi-VN') + '₫';
     document.querySelector('#total').textContent = newTotal.toLocaleString('vi-VN') + '₫';
 }
+
+// 🧩 Kiểm tra địa chỉ khi nhấn "Đặt hàng"
+document.querySelector('form').addEventListener('submit', function (e) {
+    const addressSelect = document.querySelector('.address-select');
+    const addressInput  = document.querySelector('.address-input');
+    let error = document.querySelector('#address-error');
+
+    // Nếu chưa có phần tử thông báo thì tạo mới
+    if (!error) {
+        error = document.createElement('p');
+        error.id = 'address-error';
+        error.style.color = 'red';
+        error.style.fontSize = '14px';
+        error.style.marginTop = '-5px';
+        error.style.marginBottom = '10px';
+        addressInput.insertAdjacentElement('afterend', error);
+    }
+
+    // Kiểm tra nếu cả 2 đều trống
+    if (!addressSelect.value && !addressInput.value.trim()) {
+        e.preventDefault();
+        error.textContent = '⚠️ Vui lòng chọn hoặc nhập địa chỉ giao hàng.';
+        error.style.display = 'block';
+        addressSelect.focus();
+    } else {
+        error.style.display = 'none';
+    }
+});
 </script>
+
 </body>
 </html>

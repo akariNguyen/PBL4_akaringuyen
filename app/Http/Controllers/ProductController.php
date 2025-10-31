@@ -22,16 +22,26 @@ class ProductController extends Controller
     // ✅ Lấy shop của user
     $shop = \App\Models\Shop::where('user_id', $user->id)->first();
 
-    // ❌ Nếu không có shop hoặc shop bị đình chỉ → chặn
-    if (!$shop || $shop->status === 'suspended') {
-        return redirect()
-            ->route('seller.dashboard')
-            ->with('error', '🚫 Shop của bạn đang bị đình chỉ — không thể thêm sản phẩm mới.');
+    // ❌ Nếu không có shop, shop bị đình chỉ hoặc đang chờ duyệt → chặn
+    if (!$shop) {
+        return redirect()->route('shops.create')
+            ->with('error', 'Bạn cần tạo shop trước khi thêm sản phẩm.');
+    }
+
+    if ($shop->status === 'pending') {
+        return redirect()->route('seller.dashboard')
+            ->with('error', '⏳ Shop của bạn đang chờ duyệt — chưa thể thêm sản phẩm.');
+    }
+
+    if ($shop->status === 'suspended') {
+        return redirect()->route('seller.dashboard')
+            ->with('error', '🚫 Shop của bạn đang bị đình chỉ — không thể thêm sản phẩm.');
     }
 
     // ✅ Cho phép truy cập nếu hợp lệ
     return view('product_create');
 }
+
 
 
    public function show(Request $request, $id)
@@ -76,49 +86,73 @@ class ProductController extends Controller
 
 
     public function store(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user || $user->role !== 'seller') {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'category'    => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price'       => 'required|numeric|min:0',
-            'quantity'    => 'required|integer|min:0',
-
-            'images.*'    => 'nullable|image|max:4096',
-        ]);
-
-        // Tìm hoặc tạo category
-        $category = Category::firstOrCreate(
-            ['name' => mb_strtolower($validated['category'])],
-            ['description' => null]
-        );
-
-        $product = Product::create([
-            'seller_id'   => $user->id,
-            'category_id' => $category->id,
-            'name'        => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'price'       => $validated['price'],
-            'quantity'    => $validated['quantity'],
-               'status'      => 'pending',
-        ]);
-
-        if ($request->hasFile('images')) {
-            $stored = [];
-            foreach ($request->file('images') as $file) {
-                $stored[] = $file->store('products', 'public');
-            }
-            $product->images = $stored;
-            $product->save();
-        }
-
-          return redirect()->route('seller.dashboard')->with('success', 'Sản phẩm đã được tạo và đang chờ duyệt.');
+{
+    $user = Auth::user();
+    if (!$user || $user->role !== 'seller') {
+        abort(403, 'Chỉ người bán mới được thêm sản phẩm.');
     }
+
+    // ✅ Lấy shop của user
+    $shop = \App\Models\Shop::where('user_id', $user->id)->first();
+
+    // ❌ Nếu chưa có shop
+    if (!$shop) {
+        return redirect()->route('shops.create')
+            ->with('error', 'Bạn cần tạo shop trước khi thêm sản phẩm.');
+    }
+
+    // ⏳ Nếu shop đang chờ duyệt
+    if ($shop->status === 'pending') {
+        return redirect()->route('seller.dashboard')
+            ->with('error', '⏳ Shop của bạn đang chờ duyệt — chưa thể thêm sản phẩm.');
+    }
+
+    // 🚫 Nếu shop bị khóa
+    if ($shop->status === 'suspended') {
+        return redirect()->route('seller.dashboard')
+            ->with('error', '🚫 Shop của bạn đang bị đình chỉ — không thể thêm sản phẩm.');
+    }
+
+    // --- Giữ nguyên phần validate cũ ---
+    $validated = $request->validate([
+        'name'        => 'required|string|max:255',
+        'category'    => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'price'       => 'required|numeric|min:0',
+        'quantity'    => 'required|integer|min:0',
+        'images.*'    => 'nullable|image|max:4096',
+    ]);
+
+    // --- Tạo category nếu chưa có ---
+    $category = \App\Models\Category::firstOrCreate(
+        ['name' => mb_strtolower($validated['category'])],
+        ['description' => null]
+    );
+
+    // --- Tạo sản phẩm ---
+    $product = Product::create([
+        'seller_id'   => $user->id,
+        'category_id' => $category->id,
+        'name'        => $validated['name'],
+        'description' => $validated['description'] ?? null,
+        'price'       => $validated['price'],
+        'quantity'    => $validated['quantity'],
+        'status'      => 'pending', // chờ duyệt
+    ]);
+
+    if ($request->hasFile('images')) {
+        $stored = [];
+        foreach ($request->file('images') as $file) {
+            $stored[] = $file->store('products', 'public');
+        }
+        $product->images = $stored;
+        $product->save();
+    }
+
+    return redirect()->route('seller.dashboard')
+        ->with('success', '✅ Sản phẩm đã được tạo và đang chờ duyệt.');
+}
+
 
     public function update(Request $request, $id)
 {

@@ -118,14 +118,32 @@
 </div>
 
     <div class="layout">
+    @if($shop && $shop->status === 'pending')
+        <!-- 🚫 SHOP ĐANG CHỜ DUYỆT -->
+        <div style="grid-column: 1 / -1; display:flex; flex-direction:column; align-items:center; justify-content:center; height:80vh; text-align:center;">
+            <!-- <img src="{{ asset('Picture/pending.png') }}" alt="Pending" style="width:120px; height:auto; margin-bottom:20px;"> -->
+            <h2 style="font-size:24px; color:#f59e0b; font-weight:700;">🕒 Shop của bạn đang chờ duyệt</h2>
+            <p style="color:#6b7280; max-width:480px; font-size:16px; line-height:1.6;">
+                Vui lòng chờ quản trị viên phê duyệt trước khi truy cập các chức năng của kênh bán hàng.
+            </p>
+
+            <!-- 🔘 Nút đăng xuất -->
+            <form action="{{ route('logout') }}" method="POST" style="margin-top:20px;">
+                @csrf
+                <button type="submit"
+                    style="background-color:#ef4444; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:600;">
+                    🚪 Đăng xuất
+                </button>
+            </form>
+        </div>
+    @else
+
+        <!-- ✅ SHOP ĐÃ HOẠT ĐỘNG BÌNH THƯỜNG -->
         <aside class="sidebar">
             <div class="side-section">
                 <div class="side-title">Quản Lý Đơn Hàng</div>
                 <ul class="menu">
                     <li><a href="#" data-view="orders_all">Tất cả</a></li>
-                    
-                    
-                    
                 </ul>
             </div>
             <div class="side-section" style="margin-top:16px;">
@@ -145,36 +163,30 @@
             <div class="side-section" style="margin-top:16px;">
                 <div class="side-title" style="font-weight:700;">Thống Kê</div>
                 <ul class="menu">
-                    <li>
-                        <a href="#" data-view="revenue_report" style=" color:#111827;">
-                            💰 Thống kê doanh thu
-                        </a>
-                    </li>
+                    <li><a href="#" data-view="revenue_report">💰 Thống kê doanh thu</a></li>
                 </ul>
             </div>
-
             <div class="side-section" style="margin-top:16px;">
                 <div class="side-title">Tài Khoản</div>
                 <ul class="menu">
                     <li><a href="#" data-view="account_personal">Thông tin tài khoản</a></li>
                     <li>
-                        <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                            Đăng xuất
-                        </a>
-                        <form id="logout-form" method="POST" action="{{ route('logout') }}" style="display:none;">
-                            @csrf
-                        </form>
+                        <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Đăng xuất</a>
+                        <form id="logout-form" method="POST" action="{{ route('logout') }}" style="display:none;">@csrf</form>
                     </li>
                 </ul>
             </div>
         </aside>
+
         <main class="content" id="mainContent">
             @if($shop && $shop->status === 'suspended')
-            <div class="suspended-alert">
-                <h3 style="margin:0 0 8px 0; font-weight:600;">Shop đã bị đình chỉ</h3>
-                <p style="margin:0; font-size:14px;">Shop của bạn đã bị đình chỉ hoạt động. Vui lòng liên hệ với bộ phận hỗ trợ để được giải quyết. Các chức năng quản lý có thể bị hạn chế.</p>
-            </div>
+                <div class="suspended-alert">
+                    <h3 style="margin:0 0 8px 0; font-weight:600;">Shop đã bị đình chỉ</h3>
+                    <p style="margin:0; font-size:14px;">Shop của bạn đã bị đình chỉ hoạt động. Vui lòng liên hệ với bộ phận hỗ trợ.</p>
+                </div>
             @endif
+
+            <!-- Giữ nguyên phần dashboard cũ -->
             <div class="card" style="margin-bottom:16px;">
                 <h2 style="margin:0 0 8px 0;">Danh sách cần làm</h2>
                 <div class="grid">
@@ -194,7 +206,9 @@
                 </div>
             </div>
         </main>
-    </div>
+    @endif
+</div>
+
     <!-- Hidden templates for center content -->
     <template id="tpl-orders-all">
         <?php
@@ -271,7 +285,7 @@
     <div style="display:flex; align-items:center; gap:8px;">
         <!-- 🔍 Tìm kiếm -->
         <input id="productsSearch" type="text" placeholder="Tìm kiếm theo tên..."
-            style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; width:220px;">
+         style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; width:220px;">
 
         <!-- 🏷️ Lọc trạng thái -->
         <select id="statusFilter" style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px;">
@@ -800,6 +814,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script>
 const shopStatus = @json($shop ? $shop->status : 'active');
+if (shopStatus === 'pending') {
+    console.log("Shop đang chờ duyệt — bỏ qua JavaScript dashboard.");
+} else {
 (function(){
     function show(viewId){
         var main = document.getElementById('mainContent');
@@ -1746,7 +1763,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-
+}
 
 </script>
 

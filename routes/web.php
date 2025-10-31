@@ -41,9 +41,8 @@ Route::middleware('auth')->group(function () {
         return view('RouteUser', ['user' => auth()->user(), 'role' => 'customer']);
     })->name('customer.dashboard');
 
-    Route::get('/seller/dashboard', function () {
-        return view('seller_dashboard'); // ✅ Trang dashboard riêng cho seller
-    })->name('seller.dashboard');
+    Route::get('/seller/dashboard', [ShopController::class, 'redirectDashboard'])
+        ->name('seller.dashboard');
 });
 
 // 🛍️ Products (seller only)

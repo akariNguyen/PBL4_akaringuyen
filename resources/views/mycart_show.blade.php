@@ -165,6 +165,21 @@ document.addEventListener("DOMContentLoaded", () => {
     checkboxes.forEach(cb => cb.addEventListener("change", updateTotal));
     updateTotal();
 });
+// ✅ Trước khi submit form: chỉ giữ sản phẩm được tick
+document.getElementById('checkout-form').addEventListener('submit', function (e) {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(cb => {
+        const item = cb.closest('.cart-item');
+        const hiddenQty = item.querySelector('.qty-hidden');
+
+        // Nếu sản phẩm chưa tick, xóa input ra khỏi form
+        if (!cb.checked) {
+            cb.remove();
+            hiddenQty.remove();
+        }
+    });
+});
+
 </script>
 </body>
 </html>
