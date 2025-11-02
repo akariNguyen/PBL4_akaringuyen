@@ -236,7 +236,7 @@ class ShopController extends Controller
     }
 
     if ($shop->status === 'suspended') {
-        return view('seller.suspended', compact('shop'));
+        return view('seller_dashboard', compact('shop'));
     }
 
     // ✅ Nếu shop active, render dashboard bình thường

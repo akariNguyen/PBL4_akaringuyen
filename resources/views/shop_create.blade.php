@@ -26,15 +26,14 @@
 <body>
     <div class="container">
         <div class="header">
-    <div class="brand" style="display:flex; align-items:center; gap:10px;">
-        <img src="{{ asset('Picture/Logo.png') }}" alt="Logo" style="height:80px; width:auto; display:block;">
-        <span style="font-weight:700; color:#111827;">E-Market</span>
-    </div>
-    <div>
-        <a href="/" style="text-decoration:none; color:#2563eb; font-weight:600;">Trang chủ</a>
-    </div>
-</div>
-
+            <div class="brand" style="display:flex; align-items:center; gap:10px;">
+                <img src="{{ asset('Picture/Logo.png') }}" alt="Logo" style="height:80px; width:auto; display:block;">
+                <span style="font-weight:700; color:#111827;">E-Market</span>
+            </div>
+            <div>
+                <a href="/" style="text-decoration:none; color:#2563eb; font-weight:600;">Trang chủ</a>
+            </div>
+        </div>
 
         <h2 style="margin:0 0 12px 0;">Tạo thông tin shop</h2>
         <p style="margin:0 0 16px 0; color:#6b7280;">Điền thông tin bên dưới để khởi tạo shop của bạn.</p>
@@ -52,17 +51,20 @@
         <form method="post" action="{{ route('shops.store') }}" enctype="multipart/form-data">
             @csrf
             <div class="field">
-                <label for="name">Tên shop</label>
+                <label for="name">Tên shop <span style="color:#dc2626">*</span></label>
                 <input type="text" id="name" name="name" value="{{ old('name') }}" required>
             </div>
+
             <div class="field">
-                <label for="logo">Logo / Ảnh đại diện shop</label>
-                <input type="file" id="logo" name="logo" accept="image/*">
+                <label for="logo">Logo / Ảnh đại diện shop <span style="color:#dc2626">*</span></label>
+                <input type="file" id="logo" name="logo" accept="image/*" required>
             </div>
+
             <div class="field">
                 <label for="description">Mô tả shop</label>
                 <textarea id="description" name="description" rows="4">{{ old('description') }}</textarea>
             </div>
+
             <div class="actions">
                 <button type="submit" class="btn primary">Tạo shop</button>
                 <a class="btn" href="{{ route('seller.dashboard') }}" style="text-decoration:none; color:#111827;">Hủy</a>
@@ -71,5 +73,3 @@
     </div>
 </body>
 </html>
-
-
