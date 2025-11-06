@@ -115,28 +115,6 @@ document.addEventListener("DOMContentLoaded", () => {
         checkoutBtn.disabled = !hasSelected;
     }
 
-    // ✅ Nút + và -
-    document.querySelectorAll(".qty-minus").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const input = btn.parentElement.querySelector(".qty-input");
-            let val = Math.max(1, parseInt(input.value) - 1);
-            input.value = val;
-            updateSubtotal(btn.closest(".cart-item"));
-            updateTotal();
-            saveQuantity(btn.closest(".cart-item"));
-        });
-    });
-
-    document.querySelectorAll(".qty-plus").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const input = btn.parentElement.querySelector(".qty-input");
-            input.value = parseInt(input.value) + 1;
-            updateSubtotal(btn.closest(".cart-item"));
-            updateTotal();
-            saveQuantity(btn.closest(".cart-item"));
-        });
-    });
-
     // ✅ Cập nhật subtotal mỗi item
     function updateSubtotal(item) {
         const price = parseFloat(item.querySelector(".item-checkbox").dataset.price);
@@ -161,25 +139,67 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // ✅ Khi chọn / bỏ chọn
+    // ✅ Nút -
+    document.querySelectorAll(".qty-minus").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const input = btn.parentElement.querySelector(".qty-input");
+            let val = Math.max(1, parseInt(input.value) - 1);
+            input.value = val;
+            updateSubtotal(btn.closest(".cart-item"));
+            updateTotal();
+            saveQuantity(btn.closest(".cart-item"));
+        });
+    });
+
+    // ✅ Nút +
+    document.querySelectorAll(".qty-plus").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const input = btn.parentElement.querySelector(".qty-input");
+            input.value = parseInt(input.value) + 1;
+            updateSubtotal(btn.closest(".cart-item"));
+            updateTotal();
+            saveQuantity(btn.closest(".cart-item"));
+        });
+    });
+
+    // ✅ Khi người dùng nhập tay trực tiếp
+    document.querySelectorAll(".qty-input").forEach(input => {
+        input.addEventListener("input", () => {
+            const item = input.closest(".cart-item");
+            let val = parseInt(input.value);
+            if (isNaN(val) || val < 1) val = 1;
+            input.value = val;
+            updateSubtotal(item);
+            updateTotal();
+            saveQuantity(item);
+        });
+    });
+
+    // ✅ Khi tick / bỏ tick sản phẩm
     checkboxes.forEach(cb => cb.addEventListener("change", updateTotal));
     updateTotal();
-});
-// ✅ Trước khi submit form: chỉ giữ sản phẩm được tick
-document.getElementById('checkout-form').addEventListener('submit', function (e) {
-    const checkboxes = document.querySelectorAll('.item-checkbox');
-    checkboxes.forEach(cb => {
-        const item = cb.closest('.cart-item');
-        const hiddenQty = item.querySelector('.qty-hidden');
 
-        // Nếu sản phẩm chưa tick, xóa input ra khỏi form
-        if (!cb.checked) {
-            cb.remove();
-            hiddenQty.remove();
-        }
+    // ✅ Trước khi submit form: đồng bộ tất cả số lượng mới nhất
+    document.getElementById('checkout-form').addEventListener('submit', function (e) {
+        document.querySelectorAll('.cart-item').forEach(item => {
+            const qtyInput = item.querySelector('.qty-input');
+            const qtyHidden = item.querySelector('.qty-hidden');
+            qtyHidden.value = qtyInput.value; // đồng bộ trước khi gửi
+        });
+
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        checkboxes.forEach(cb => {
+            const item = cb.closest('.cart-item');
+            const hiddenQty = item.querySelector('.qty-hidden');
+
+            if (!cb.checked) {
+                cb.disabled = true;
+                hiddenQty.disabled = true;
+            }
+        });
     });
 });
-
 </script>
+
 </body>
 </html>

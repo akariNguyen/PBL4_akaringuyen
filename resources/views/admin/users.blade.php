@@ -85,19 +85,11 @@
                 </form>
             </div>
 
-            <!-- Search -->
+            <!-- ✅ Search -->
             <div class="mb-3">
-                <form method="GET" action="{{ route('admin.users.index') }}">
-                    <input type="text" name="search" class="form-control" 
-                           placeholder="🔍 Tìm kiếm theo tên hoặc email..." 
-                           value="{{ request('search') }}" oninput="this.form.submit()">
-                </form>
+                <input type="text" id="searchInput" class="form-control"
+                       placeholder="🔍 Tìm kiếm theo tên hoặc email...">
             </div>
-
-            <!-- Thông báo lỗi -->
-            @if(session('error'))
-                <div class="alert alert-danger">{{ session('error') }}</div>
-            @endif
 
             <!-- Tabs -->
             <ul class="nav nav-tabs" id="userTabs" role="tablist">
@@ -122,7 +114,7 @@
                                 <th>Tình trạng</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="customerTable">
                             @forelse($users->where('role','customer') as $user)
                                 <tr>
                                     <td>{{ $user->name }}</td>
@@ -160,7 +152,7 @@
                                 <th>Tình trạng</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="sellerTable">
                             @forelse($users->where('role','seller') as $user)
                                 <tr>
                                     <td>{{ $user->name }}</td>
@@ -190,4 +182,25 @@
         </div>
     </div>
 </div>
+
+<!-- ✅ Script: Tìm kiếm tức thì không reload -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput');
+
+    const filterTable = (tableId, query) => {
+        const rows = document.querySelectorAll(`#${tableId} tr`);
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    };
+
+    searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim().toLowerCase();
+        filterTable('customerTable', q);
+        filterTable('sellerTable', q);
+    });
+});
+</script>
 @endsection

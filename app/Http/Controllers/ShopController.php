@@ -217,7 +217,7 @@ class ShopController extends Controller
     $user = Auth::user();
 
     if (!$user || $user->role !== 'seller') {
-        abort(403);
+        abort(403, 'Chỉ người bán mới được truy cập trang này.');
     }
 
     $shop = Shop::where('user_id', $user->id)->first();
@@ -227,20 +227,30 @@ class ShopController extends Controller
             ->with('error', 'Bạn chưa tạo shop nào.');
     }
 
+    // 🕒 Nếu shop đang chờ duyệt
     if ($shop->status === 'pending') {
-        return view('seller_dashboard', compact('shop')); // hiển thị giao diện chờ duyệt
+        // ⚠️ Tránh lỗi undefined variable $categories
+        $categories = collect([]);
+        return view('seller_dashboard', compact('shop', 'categories'))
+            ->with('message', '⏳ Shop của bạn đang chờ duyệt.');
     }
 
+    // ❌ Nếu shop bị từ chối
     if ($shop->status === 'rejected') {
         return redirect()->route('seller.shop.rejected');
     }
 
+    // 🚫 Nếu shop bị đình chỉ
     if ($shop->status === 'suspended') {
-        return view('seller_dashboard', compact('shop'));
+        $categories = collect([]);
+        return view('seller_dashboard', compact('shop', 'categories'))
+            ->with('error', '🚫 Shop của bạn đang bị đình chỉ.');
     }
 
-    // ✅ Nếu shop active, render dashboard bình thường
-    return view('seller_dashboard', compact('shop'));
-    }
+    // ✅ Nếu shop đang hoạt động (active)
+    // 👉 Lấy danh sách category để dropdown hiển thị
+    $categories = \App\Models\Category::orderBy('name')->get();
 
+    return view('seller_dashboard', compact('shop', 'categories'));
+}
 }

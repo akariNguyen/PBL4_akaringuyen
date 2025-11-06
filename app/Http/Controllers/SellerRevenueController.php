@@ -68,26 +68,51 @@ class SellerRevenueController extends Controller
             'soldCount' => $soldCount,
         ]);
     }
-    public function getJson(Request $request)
-{
-    $sellerId = auth()->id();
-    $year = $request->query('year', now()->year);
-    $currentMonth = ($year == now()->year) ? now()->month : 12;
 
-    $revenues = [];
-    for ($m = 1; $m <= $currentMonth; $m++) {
-        $revenues[$m] = \App\Models\Order::whereHas('items', function($q) use ($sellerId) {
-            $q->where('seller_id', $sellerId);
-        })->whereYear('created_at', $year)
-          ->whereMonth('created_at', $m)
-          ->where('status', 'completed')
-          ->sum('total_price');
+    /**
+     * Trả dữ liệu JSON cho biểu đồ doanh thu (Chart.js)
+     */
+    public function getJson(Request $request)
+    {
+        $sellerId = auth()->id();
+        $year = $request->query('year', now()->year);
+        $currentMonth = ($year == now()->year) ? now()->month : 12;
+
+        $revenues = [];
+        for ($m = 1; $m <= $currentMonth; $m++) {
+            $revenues[$m] = Order::whereHas('items', function ($q) use ($sellerId) {
+                $q->where('seller_id', $sellerId);
+            })
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $m)
+            ->where('status', 'completed')
+            ->sum('total_price');
+        }
+
+        return response()->json([
+            'year' => $year,
+            'revenues' => array_values($revenues),
+        ]);
     }
 
-    return response()->json([
-        'year' => $year,
-        'revenues' => array_values($revenues),
-    ]);
-}
+    /**
+     * ✅ API: Lấy tổng doanh thu hiện tại của seller (dùng khi update realtime)
+     */
+    public function getTotalRevenue()
+    {
+        $sellerId = auth()->id();
 
+        if (!$sellerId) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Tính tổng doanh thu từ tất cả đơn hoàn tất của seller
+        $total = Order::whereHas('items', function ($q) use ($sellerId) {
+                $q->where('seller_id', $sellerId);
+            })
+            ->where('status', 'completed')
+            ->sum('total_price');
+
+        return response()->json(['total' => $total]);
+    }
 }

@@ -114,6 +114,10 @@ Route::middleware(['auth'])->prefix('seller')->name('seller.')->group(function (
     // 📈 Thống kê doanh thu người bán
 Route::get('/revenue/report', [SellerRevenueController::class, 'index'])
     ->name('revenue.report');
+// 📊 Lấy tổng doanh thu hiện tại (dùng cho AJAX sau khi giao hàng thành công)
+Route::get('/revenue/total', [SellerRevenueController::class, 'getTotalRevenue'])
+    ->name('revenue.total');
+
     // 🔹 Route JSON để lấy dữ liệu biểu đồ mà không reload trang
 Route::get('/seller/revenue/json', [SellerRevenueController::class, 'getJson'])
     ->middleware(['auth', 'role:seller'])

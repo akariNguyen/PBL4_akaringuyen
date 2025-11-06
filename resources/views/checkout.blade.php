@@ -91,9 +91,10 @@ $finalTotal = $totalPrice + $shippingFee;
         <div class="voucher-section">
             <h3>🎟️ Chọn Voucher</h3>
             @php
-                $shopVouchers = $vouchers['shop'] ?? collect();
-                $adminVouchers = $vouchers['admin'] ?? collect();
+                $shopVouchers = $shopVouchers ?? collect();
+                $adminVouchers = $adminVouchers ?? collect();
             @endphp
+
 
             {{-- Voucher của shop --}}
             <label>Voucher cửa hàng</label>

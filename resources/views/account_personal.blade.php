@@ -79,11 +79,13 @@
             <div class="success-message">{{ session('success_password') }}</div>
         @endif
         <div class="back-bar" style="margin-bottom:12px;">
-            <button onclick="window.history.back()" 
+            <button onclick="window.location.href='{{ route('customer.dashboard') }}'"
+
                     style="background:none; border:none; color:#2563eb; font-weight:600; cursor:pointer; font-size:14px; display:flex; align-items:center; gap:6px;">
-                ← Quay lại
+                ← Quay lại trang chủ
             </button>
         </div>
+
 
         <div class="tabs">
             <button class="tab active" data-tab="info" id="tab-info-btn">Thông tin cá nhân</button>

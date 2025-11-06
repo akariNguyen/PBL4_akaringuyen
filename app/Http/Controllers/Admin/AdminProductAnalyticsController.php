@@ -63,20 +63,21 @@ class AdminProductAnalyticsController extends Controller
         }
 
         // ==== Truy vấn sản phẩm ====
-        $data = Product::whereIn('products.status', ['in_stock', 'out_of_stock']) // ✅ chỉ lấy sản phẩm còn hoặc hết hàng
-            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
-            ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')
-            ->select(
-                'products.id',
-                'products.name',
-                'products.status',
-                DB::raw('COALESCE(SUM(CASE WHEN orders.status = "completed"
-                    AND orders.updated_at BETWEEN "' . $start . '" AND "' . $end . '"
-                    THEN order_items.quantity ELSE 0 END), 0) AS sold_qty'),
-                DB::raw('COALESCE(SUM(CASE WHEN orders.status = "completed"
-                    AND orders.updated_at BETWEEN "' . $start . '" AND "' . $end . '"
-                    THEN order_items.price * order_items.quantity ELSE 0 END), 0) AS revenue')
-            )
+        $data = Product::whereIn('products.status', ['in_stock', 'out_of_stock', 'pending'])
+        ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
+        ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')
+        ->select(
+            'products.id',
+            'products.name',
+            'products.status',
+            DB::raw('COALESCE(SUM(CASE WHEN orders.status IN ("completed","delivered","success")
+                AND orders.created_at BETWEEN "' . $start . '" AND "' . $end . '"
+                THEN order_items.quantity ELSE 0 END), 0) AS sold_qty'),
+            DB::raw('COALESCE(SUM(CASE WHEN orders.status IN ("completed","delivered","success")
+                AND orders.created_at BETWEEN "' . $start . '" AND "' . $end . '"
+                THEN order_items.price * order_items.quantity ELSE 0 END), 0) AS revenue')
+        )
+
             ->groupBy('products.id', 'products.name', 'products.status')
             ->orderByDesc('sold_qty')
             ->limit(10) // ✅ chỉ lấy top 10

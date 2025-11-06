@@ -436,22 +436,25 @@
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Tên sản phẩm</label>
                     <input type="text" name="name" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;" required>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-                    <div>
-                        <label style="display:block; font-weight:600; margin-bottom:6px;">Loại sản phẩm</label>
-                        <select id="category_select" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;">
-                            <option value="Áo quần">Áo quần</option>
-                            <option value=" Trang sức"> Trang sức</option>
-                            <option value="Giày dép">Giày dép</option>
-                            <option value="__other__">Khác</option>
-                        </select>
-                    </div>
-                    <div id="category_other_wrap" style="display:none;">
-                        <label style="display:block; font-weight:600; margin-bottom:6px;">Loại khác</label>
-                        <input type="text" id="category_other" placeholder="Nhập loại sản phẩm" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;">
-                    </div>
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Loại sản phẩm</label>
+                    <select id="category_select"
+                            style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;">
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat->name }}">{{ ucfirst($cat->name) }}</option>
+                        @endforeach
+                        <option value="__other__">Khác</option>
+                    </select>
                 </div>
+
+                <div id="category_other_wrap" style="display:none;">
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Loại khác</label>
+                    <input type="text" id="category_other" placeholder="Nhập loại sản phẩm"
+                        style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;">
+                </div>
+
                 <input type="hidden" name="category" id="category_value">
+
                 <div style="margin-bottom:12px;">
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Mô tả chi tiết</label>
                     <textarea name="description" rows="4" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px;"></textarea>
@@ -468,7 +471,8 @@
                 </div>
                 <div style="margin-bottom:12px;">
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Hình ảnh (có thể chọn nhiều)</label>
-                    <input type="file" name="images[]" accept="image/*" multiple>
+                    <input type="file" name="images[]" accept="image/*" multiple required>
+
                 </div>
                 <div>
                     <button type="submit" style="padding:10px 16px; border-radius:8px; border:1px solid #2563eb; background:#2563eb; color:#fff;">Tạo sản phẩm</button>
@@ -1361,10 +1365,30 @@ if (shopStatus === 'pending') {
             if (data.success) {
                 const order = allOrders.find(o => o.id === orderId);
                 if (order) order.status = 'completed';
+
+                // 🟩 Cập nhật ngay phần thống kê số lượng trên dashboard
+                // 🟩 Cập nhật ngay phần thống kê số lượng trên dashboard (sau khi giao hàng)
+                document.querySelectorAll('.metric').forEach(metric => {
+                    const title = metric.querySelector('h3')?.textContent?.trim();
+
+                    if (title === 'Đã giao') {
+                        const val = metric.querySelector('.val');
+                        if (val) val.textContent = parseInt(val.textContent) + 1;
+                    }
+                    if (title === 'Chưa giao') {
+                        const val = metric.querySelector('.val');
+                        if (val && parseInt(val.textContent) > 0)
+                            val.textContent = parseInt(val.textContent) - 1;
+                    }
+                });
+                        
+
+                // 🟦 Chuyển tab sang "Hoàn thành"
                 const completedTab = document.querySelector('.tab[data-tab="completed"]');
                 const tabs = document.querySelectorAll('.tab[data-tab]');
                 tabs.forEach(t => t.classList.remove('active'));
                 if (completedTab) completedTab.classList.add('active');
+
                 const from = document.getElementById('filterFrom').value;
                 const to = document.getElementById('filterTo').value;
                 renderOrders('completed', from, to);
@@ -1372,6 +1396,7 @@ if (shopStatus === 'pending') {
                 alert(data.message || 'Không thể cập nhật.');
             }
         })
+
         .catch(err => {
             console.error(err);
             alert(err.message);

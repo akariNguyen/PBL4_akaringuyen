@@ -14,33 +14,30 @@ class ProductController extends Controller
 {
     $user = Auth::user();
 
-    // ✅ Kiểm tra đăng nhập và vai trò
     if (!$user || $user->role !== 'seller') {
         abort(403, 'Chỉ người bán mới được truy cập trang này.');
     }
 
-    // ✅ Lấy shop của user
     $shop = \App\Models\Shop::where('user_id', $user->id)->first();
 
-    // ❌ Nếu không có shop, shop bị đình chỉ hoặc đang chờ duyệt → chặn
     if (!$shop) {
-        return redirect()->route('shops.create')
-            ->with('error', 'Bạn cần tạo shop trước khi thêm sản phẩm.');
+        return redirect()->route('shops.create')->with('error', 'Bạn cần tạo shop trước khi thêm sản phẩm.');
     }
-
     if ($shop->status === 'pending') {
-        return redirect()->route('seller.dashboard')
-            ->with('error', '⏳ Shop của bạn đang chờ duyệt — chưa thể thêm sản phẩm.');
+        return redirect()->route('seller.dashboard')->with('error', '⏳ Shop của bạn đang chờ duyệt.');
     }
-
     if ($shop->status === 'suspended') {
-        return redirect()->route('seller.dashboard')
-            ->with('error', '🚫 Shop của bạn đang bị đình chỉ — không thể thêm sản phẩm.');
+        return redirect()->route('seller.dashboard')->with('error', '🚫 Shop của bạn đang bị đình chỉ.');
     }
 
-    // ✅ Cho phép truy cập nếu hợp lệ
-    return view('product_create');
+    // ✅ Lấy toàn bộ loại sản phẩm trong DB
+    $categories = \App\Models\Category::orderBy('name')->get();
+
+    // Trả về dashboard có biến $categories để Blade dùng
+    return view('seller.dashboard', compact('categories', 'shop'));
 }
+
+
 
 
 
@@ -92,28 +89,24 @@ class ProductController extends Controller
         abort(403, 'Chỉ người bán mới được thêm sản phẩm.');
     }
 
-    // ✅ Lấy shop của user
     $shop = \App\Models\Shop::where('user_id', $user->id)->first();
 
-    // ❌ Nếu chưa có shop
     if (!$shop) {
         return redirect()->route('shops.create')
             ->with('error', 'Bạn cần tạo shop trước khi thêm sản phẩm.');
     }
 
-    // ⏳ Nếu shop đang chờ duyệt
     if ($shop->status === 'pending') {
         return redirect()->route('seller.dashboard')
             ->with('error', '⏳ Shop của bạn đang chờ duyệt — chưa thể thêm sản phẩm.');
     }
 
-    // 🚫 Nếu shop bị khóa
     if ($shop->status === 'suspended') {
         return redirect()->route('seller.dashboard')
             ->with('error', '🚫 Shop của bạn đang bị đình chỉ — không thể thêm sản phẩm.');
     }
 
-    // --- Giữ nguyên phần validate cũ ---
+    // ✅ Validate dữ liệu
     $validated = $request->validate([
         'name'        => 'required|string|max:255',
         'category'    => 'required|string|max:255',
@@ -123,23 +116,26 @@ class ProductController extends Controller
         'images.*'    => 'nullable|image|max:4096',
     ]);
 
-    // --- Tạo category nếu chưa có ---
+    // ✅ Nếu chọn "Khác" → tự thêm loại mới vào bảng categories
+    $categoryName = trim($validated['category']);
+
     $category = \App\Models\Category::firstOrCreate(
-        ['name' => mb_strtolower($validated['category'])],
+        ['name' => $categoryName],
         ['description' => null]
     );
 
-    // --- Tạo sản phẩm ---
-    $product = Product::create([
+    // ✅ Tạo sản phẩm
+    $product = \App\Models\Product::create([
         'seller_id'   => $user->id,
         'category_id' => $category->id,
         'name'        => $validated['name'],
         'description' => $validated['description'] ?? null,
         'price'       => $validated['price'],
         'quantity'    => $validated['quantity'],
-        'status'      => 'pending', // chờ duyệt
+        'status'      => 'pending',
     ]);
 
+    // ✅ Lưu ảnh
     if ($request->hasFile('images')) {
         $stored = [];
         foreach ($request->file('images') as $file) {
@@ -150,8 +146,9 @@ class ProductController extends Controller
     }
 
     return redirect()->route('seller.dashboard')
-        ->with('success', '✅ Sản phẩm đã được tạo và đang chờ duyệt.');
+        ->with('success', '✅ Sản phẩm đã được tạo và loại mới (nếu có) đã được thêm vào danh sách!');
 }
+
 
 
     public function update(Request $request, $id)
