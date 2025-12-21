@@ -119,9 +119,12 @@ Route::get('/revenue/total', [SellerRevenueController::class, 'getTotalRevenue']
     ->name('revenue.total');
 
     // 🔹 Route JSON để lấy dữ liệu biểu đồ mà không reload trang
-Route::get('/seller/revenue/json', [SellerRevenueController::class, 'getJson'])
-    ->middleware(['auth', 'role:seller'])
-    ->name('seller.revenue.json');
+Route::get('/revenue/json', [SellerRevenueController::class, 'getJson'])
+    ->name('revenue.json');
+
+    // 📊 Route JSON để lấy thống kê tổng quan (số đơn, sản phẩm, doanh thu)
+Route::get('/revenue/stats', [SellerRevenueController::class, 'getStats'])
+    ->name('revenue.stats');
 
 
 });// 📡 JSON API

@@ -12,8 +12,8 @@ class AdminUserController extends Controller
 {
     public function index(Request $request)
 {
-    // --- Thống kê ---
-    $userCount = \App\Models\User::count();
+    // --- Thống kê (không tính admin) ---
+    $userCount = \App\Models\User::whereIn('role', ['customer', 'seller'])->count();
 
     // --- Default ngày lọc ---
     $defaultFrom = \App\Models\User::min('created_at');
@@ -33,8 +33,9 @@ class AdminUserController extends Controller
     $sortBy = $request->input('sort_by', 'created_at');
     $sortOrder = $request->input('sort_order', 'desc');
 
-    // --- Query user ---
+    // --- Query user (không hiển thị admin) ---
     $users = \App\Models\User::query()
+        ->whereIn('role', ['customer', 'seller'])
         ->when($search, function ($q) use ($search) {
             $q->where('name', 'like', "%$search%")
               ->orWhere('email', 'like', "%$search%");

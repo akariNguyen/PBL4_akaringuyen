@@ -71,7 +71,14 @@ class AdminAnalyticsController extends Controller
         }
 
         // 🧾 Truy vấn doanh thu (chỉ lấy shop đang active)
-        $data = Shop::where('shops.status', 'active') // ✅ chỉ lấy shop đang hoạt động
+        // Debug: Log start/end times
+        \Log::info('Analytics Query', [
+            'period' => $period,
+            'start' => $start->format('Y-m-d H:i:s'),
+            'end' => $end->format('Y-m-d H:i:s'),
+        ]);
+        
+        $data = Shop::where('shops.status', 'active')
     ->leftJoin('users', 'shops.user_id', '=', 'users.id')
     ->leftJoin('order_items', 'order_items.seller_id', '=', 'users.id')
     ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')
@@ -80,9 +87,10 @@ class AdminAnalyticsController extends Controller
         'shops.name as shop_name',
         DB::raw('COALESCE(SUM(CASE 
             WHEN orders.status = "completed"
-            AND orders.updated_at BETWEEN "' . $start . '" AND "' . $end . '"
+            AND orders.created_at BETWEEN ? AND ?
             THEN orders.total_price ELSE 0 END), 0) as total')
     )
+    ->addBinding([$start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s')], 'select')
     ->groupBy('shops.user_id', 'shops.name')
     ->orderByDesc('total')
     ->limit(10)
@@ -122,9 +130,9 @@ class AdminAnalyticsController extends Controller
 
         // Tuần 1: từ ngày 1 đến CN đầu tiên
         if ($startOfMonth->dayOfWeek === Carbon::SUNDAY) {
-            $firstWeekEnd = $startOfMonth->copy();
+            $firstWeekEnd = $startOfMonth->copy()->endOfDay();
         } else {
-            $firstWeekEnd = $startOfMonth->copy()->next(Carbon::SUNDAY);
+            $firstWeekEnd = $startOfMonth->copy()->next(Carbon::SUNDAY)->endOfDay();
             if ($firstWeekEnd > $endOfMonth) $firstWeekEnd = $endOfMonth;
         }
 
@@ -134,17 +142,17 @@ class AdminAnalyticsController extends Controller
         ];
 
         // Các tuần tiếp theo: Thứ 2 -> CN
-        $cursor = $firstWeekEnd->copy()->addDay();
+        $cursor = $firstWeekEnd->copy()->addDay()->startOfDay();
         while ($cursor <= $endOfMonth) {
-            $weekStart = $cursor->copy();
-            $weekEnd = $weekStart->copy()->next(Carbon::SUNDAY);
+            $weekStart = $cursor->copy()->startOfDay();
+            $weekEnd = $weekStart->copy()->next(Carbon::SUNDAY)->endOfDay();
             if ($weekEnd > $endOfMonth) $weekEnd = $endOfMonth;
 
             $weeks[] = [
                 'start' => $weekStart->copy(),
                 'end' => $weekEnd->copy(),
             ];
-            $cursor = $weekEnd->copy()->addDay();
+            $cursor = $weekEnd->copy()->addDay()->startOfDay();
         }
 
         return $weeks;
