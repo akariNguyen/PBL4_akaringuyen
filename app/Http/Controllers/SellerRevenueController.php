@@ -115,4 +115,40 @@ class SellerRevenueController extends Controller
 
         return response()->json(['total' => $total]);
     }
+
+    /**
+     * 📊 API: Lấy thống kê tổng quan (số đơn, sản phẩm đã bán, doanh thu) theo năm
+     */
+    public function getStats(Request $request)
+    {
+        $sellerId = auth()->id();
+        $year = $request->query('year', now()->year);
+
+        if (!$sellerId) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // 🧾 Lấy tất cả đơn hàng hoàn thành của seller trong năm
+        $orders = Order::whereHas('items', function ($q) use ($sellerId) {
+                $q->where('seller_id', $sellerId);
+            })
+            ->whereYear('created_at', $year)
+            ->where('status', 'completed')
+            ->with(['items' => function ($q) use ($sellerId) {
+                $q->where('seller_id', $sellerId);
+            }])
+            ->get();
+
+        // 📊 Tổng hợp dữ liệu
+        $totalOrders = $orders->count();
+        $soldCount = $orders->flatMap(fn($o) => $o->items ?? collect())->sum('quantity');
+        $totalRevenue = $orders->sum('total_price');
+
+        return response()->json([
+            'totalOrders' => $totalOrders,
+            'soldCount' => $soldCount,
+            'totalRevenue' => $totalRevenue,
+            'year' => $year
+        ]);
+    }
 }

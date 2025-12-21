@@ -103,23 +103,23 @@ class AdminProductAnalyticsController extends Controller
 
         // Tuần 1: từ ngày 1 -> CN đầu tiên
         if ($startOfMonth->dayOfWeek === Carbon::SUNDAY) {
-            $firstWeekEnd = $startOfMonth->copy();
+            $firstWeekEnd = $startOfMonth->copy()->endOfDay();
         } else {
-            $firstWeekEnd = $startOfMonth->copy()->next(Carbon::SUNDAY);
+            $firstWeekEnd = $startOfMonth->copy()->next(Carbon::SUNDAY)->endOfDay();
             if ($firstWeekEnd > $endOfMonth) $firstWeekEnd = $endOfMonth;
         }
 
         $weeks[] = ['start' => $startOfMonth->copy(), 'end' => $firstWeekEnd->copy()];
 
         // Các tuần tiếp theo: Thứ 2 -> CN
-        $cursor = $firstWeekEnd->copy()->addDay();
+        $cursor = $firstWeekEnd->copy()->addDay()->startOfDay();
         while ($cursor <= $endOfMonth) {
-            $weekStart = $cursor->copy();
-            $weekEnd = $weekStart->copy()->next(Carbon::SUNDAY);
+            $weekStart = $cursor->copy()->startOfDay();
+            $weekEnd = $weekStart->copy()->next(Carbon::SUNDAY)->endOfDay();
             if ($weekEnd > $endOfMonth) $weekEnd = $endOfMonth;
 
             $weeks[] = ['start' => $weekStart, 'end' => $weekEnd];
-            $cursor = $weekEnd->copy()->addDay();
+            $cursor = $weekEnd->copy()->addDay()->startOfDay();
         }
 
         return $weeks;
